@@ -1,0 +1,6 @@
+storage/sessions/
+php-server.err.log
+php-server.out.log
+database/webpc.sqlite
+.DS_Store
+Thumbs.db
