@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-label="Logo ĐộPICI">
+  <defs>
+    <linearGradient id="bg" x1="18" y1="8" x2="110" y2="120" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#fff6df"/>
+      <stop offset="0.58" stop-color="#ead4a3"/>
+      <stop offset="1" stop-color="#77b900"/>
+    </linearGradient>
+    <linearGradient id="glass" x1="32" y1="84" x2="96" y2="122" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#ff8a30"/>
+      <stop offset="1" stop-color="#72c400"/>
+    </linearGradient>
+    <clipPath id="clip">
+      <circle cx="64" cy="64" r="60"/>
+    </clipPath>
+  </defs>
+  <circle cx="64" cy="64" r="62" fill="#0b160c"/>
+  <circle cx="64" cy="64" r="58" fill="url(#bg)"/>
+  <g clip-path="url(#clip)">
+    <path d="M19 118c8-26 25-41 45-41s37 15 45 41" fill="#f4e3b6"/>
+    <path d="M37 118c3-23 13-35 27-35s24 12 27 35" fill="#d6b276"/>
+    <path d="M43 81c4 13 11 21 21 21s17-8 21-21l-8-8H51z" fill="#f4c08a"/>
+    <path d="M38 46c1-22 14-35 32-32 15 3 22 14 21 33-1 25-12 43-27 43S39 71 38 46z" fill="#f2b879"/>
+    <path d="M39 45c8-20 33-37 52-11 0-16-10-30-26-31C48 2 35 17 39 45z" fill="#1a1714"/>
+    <path d="M47 57c3 3 8 3 11 0M70 57c3 3 8 3 11 0" fill="none" stroke="#27160d" stroke-width="4" stroke-linecap="round"/>
+    <path d="M55 71c6 6 13 6 19 0" fill="none" stroke="#fdf4de" stroke-width="5" stroke-linecap="round"/>
+    <rect x="42" y="84" width="44" height="46" rx="9" fill="url(#glass)" stroke="#331d13" stroke-width="3"/>
+    <rect x="39" y="78" width="50" height="10" rx="4" fill="#ef3d36"/>
+    <path d="M49 101c8-10 20-10 30 0-5 13-23 13-30 0z" fill="#fff8e6" opacity=".92"/>
+    <path d="M55 100l7 7 12-15" fill="none" stroke="#0f4b1b" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+  <circle cx="64" cy="64" r="58" fill="none" stroke="rgba(255,255,255,.75)" stroke-width="4"/>
+</svg>

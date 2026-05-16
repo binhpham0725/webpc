@@ -148,7 +148,7 @@ INSERT INTO users (
     id, role, full_name, email, password_hash, phone, company, address, city, note,
     avatar_label, avatar_url, created_at, updated_at
 ) VALUES
-    (1, 'admin', 'Admin WebPC', 'admin@webpc.local', '$2y$10$8zT08NJr/Dg81LAouKxCzOF2XTwyrkJ/95manx2d1P3Wvva3ULL7m', '0900000000', 'WebPC', '1 Green Glass St', 'Ha Noi', 'Tai khoan admin demo cho khu vuc quan tri.', 'AW', '', '2026-04-29 00:00:00', '2026-04-29 00:00:00');
+    (1, 'admin', 'Admin DoPICI', 'admin@webpc.local', '$2y$10$8zT08NJr/Dg81LAouKxCzOF2XTwyrkJ/95manx2d1P3Wvva3ULL7m', '0900000000', 'DoPICI', '1 Green Glass St', 'Ha Noi', 'Tai khoan admin demo cho khu vuc quan tri.', 'AD', '', '2026-04-29 00:00:00', '2026-04-29 00:00:00');
 
 INSERT INTO products (
     id, category_id, slug, name, summary, description, price, old_price, stock, rating, featured, tags,
@@ -164,15 +164,15 @@ INSERT INTO products (
     (8, 4, 'dock-usb-c-12in1-pro', 'Dock USB-C 12 in 1 Pro', 'Dock mo rong cong cho laptop va workstation.', 'Bien laptop thanh tram lam viec day du voi HDMI, LAN, USB, SD, va sac PD.', 2490000, 2790000, 13, 4.5, 0, 'Portable,Workstation', 'https://images.unsplash.com/photo-1516321165247-4aa89a48be28?auto=format&fit=crop&w=1200&q=80', 'https://images.unsplash.com/photo-1519389950473-47ba0277781c?auto=format&fit=crop&w=1200&q=80', '{"Ports":"HDMI, LAN, USB-A, USB-C, SD","Power":"PD 100W","Network":"Gigabit LAN","Body":"Aluminum","Use case":"Workspace"}', '["Giam day cam","Hop cho ultrabook","Bo sung LAN on dinh"]', 3, '2026-04-29 00:00:00');
 
 INSERT INTO services (id, slug, title, eta_label, price_label, description, cover_image, sort_order) VALUES
-    (1, 'build-custom', 'Lap may theo ngan sach', 'Trong 24 gio', 'Tu 300.000 VND', 'Chot cau hinh theo workload, ngan sach, va kha nang nang cap.', 'https://images.unsplash.com/photo-1593640408182-31c70c8268f5?auto=format&fit=crop&w=1200&q=80', 1),
-    (2, 'upgrade-pc', 'Nang cap PC va workstation', '2-4 gio', 'Tu 250.000 VND', 'Phan tich bottleneck va de xuat luong nang cap hop ly.', 'https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&w=1200&q=80', 2),
-    (3, 'clean-and-repaste', 'Ve sinh va thay nhiet', '90 phut', 'Tu 180.000 VND', 'Lam sach bui, thay keo tan, va test lai nhiet do.', 'https://images.unsplash.com/photo-1580894908361-967195033215?auto=format&fit=crop&w=1200&q=80', 3),
-    (4, 'workspace-setup', 'Trien khai goc lam viec', 'Theo lich hen', 'Tu 500.000 VND', 'Tu van monitor, dock, webcam, router, va bo tri day gon.', 'https://images.unsplash.com/photo-1496171367470-9ed9a91ea931?auto=format&fit=crop&w=1200&q=80', 4);
+    (1, 'build-custom', 'Lap may theo yeu cau', 'Trong 24 gio', 'Tu 300.000 VND', 'Chot cau hinh theo workload, ngan sach, va kha nang nang cap.', 'https://images.unsplash.com/photo-1593640408182-31c70c8268f5?auto=format&fit=crop&w=1200&q=80', 1),
+    (2, 'upgrade-pc', 'Nang cap thiet bi', '2-4 gio', 'Tu 250.000 VND', 'Phan tich bottleneck va de xuat luong nang cap hop ly.', 'https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&w=1200&q=80', 2),
+    (3, 'clean-and-repaste', 'Ve sinh va thay keo tan nhiet', '90 phut', 'Tu 180.000 VND', 'Lam sach bui, thay keo tan, va test lai nhiet do.', 'https://images.unsplash.com/photo-1580894908361-967195033215?auto=format&fit=crop&w=1200&q=80', 3),
+    (4, 'workspace-setup', 'Bo tri khong gian lam viec', 'Theo lich hen', 'Tu 500.000 VND', 'Tu van monitor, dock, webcam, router, va bo tri day gon.', 'https://images.unsplash.com/photo-1496171367470-9ed9a91ea931?auto=format&fit=crop&w=1200&q=80', 4);
 
 INSERT INTO payment_methods (id, user_id, method_type, bank_name, account_mask, account_ref, holder_name, note, created_at) VALUES
-    (1, 1, 'bank_transfer', 'Ngan hang ABC', '**** 9845', '9845', 'ADMIN WEBPC', 'Tai khoan demo cho admin.', '2026-04-29 00:00:00'),
-    (2, 1, 'cod', 'COD', 'Thanh toan khi nhan hang', '', 'ADMIN WEBPC', 'Nhan hang roi thanh toan tien mat hoac chuyen khoan.', '2026-04-29 00:00:00'),
-    (3, 1, 'momo', 'MoMo', '**** 0000', '0900000000', 'ADMIN WEBPC', 'Thanh toan qua vi MoMo.', '2026-04-29 00:00:00'),
-    (4, 1, 'vnpay', 'VNPay', 'Cong thanh toan VNPay', '', 'ADMIN WEBPC', 'Thanh toan qua QR VNPay hoac ATM noi dia.', '2026-04-29 00:00:00'),
-    (5, 1, 'bank_card', 'The ngan hang noi dia', 'ATM / Napas', '', 'ADMIN WEBPC', 'Thanh toan bang the ngan hang noi dia.', '2026-04-29 00:00:00'),
-    (6, 1, 'visa', 'Visa / Mastercard / JCB', 'The quoc te', '', 'ADMIN WEBPC', 'Thanh toan bang Visa, Mastercard hoac JCB.', '2026-04-29 00:00:00');
+    (1, 1, 'bank_transfer', 'Ngan hang ABC', '**** 9845', '9845', 'ADMIN DOPICI', 'Tai khoan demo cho admin.', '2026-04-29 00:00:00'),
+    (2, 1, 'cod', 'COD', 'Thanh toan khi nhan hang', '', 'ADMIN DOPICI', 'Nhan hang roi thanh toan tien mat hoac chuyen khoan.', '2026-04-29 00:00:00'),
+    (3, 1, 'momo', 'MoMo', '**** 0000', '0900000000', 'ADMIN DOPICI', 'Thanh toan qua vi MoMo.', '2026-04-29 00:00:00'),
+    (4, 1, 'vnpay', 'VNPay', 'Cong thanh toan VNPay', '', 'ADMIN DOPICI', 'Thanh toan qua QR VNPay hoac ATM noi dia.', '2026-04-29 00:00:00'),
+    (5, 1, 'bank_card', 'The ngan hang noi dia', 'ATM / Napas', '', 'ADMIN DOPICI', 'Thanh toan bang the ngan hang noi dia.', '2026-04-29 00:00:00'),
+    (6, 1, 'visa', 'Visa / Mastercard / JCB', 'The quoc te', '', 'ADMIN DOPICI', 'Thanh toan bang Visa, Mastercard hoac JCB.', '2026-04-29 00:00:00');

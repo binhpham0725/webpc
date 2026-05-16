@@ -240,11 +240,11 @@ function seed_default_admin(PDO $pdo): void
             )',
             [
                 'role' => 'admin',
-                'full_name' => 'Admin WebPC',
+                'full_name' => 'Admin ĐộPICI',
                 'email' => $adminEmail,
                 'password_hash' => password_hash('Admin@12345', PASSWORD_DEFAULT),
                 'phone' => '0900000000',
-                'company' => 'WebPC',
+                'company' => 'ĐộPICI',
                 'address' => '1 Green Glass St',
                 'city' => 'Ha Noi',
                 'note' => 'Tài khoản admin demo cho khu vực quản trị.',
@@ -269,6 +269,9 @@ function seed_default_admin(PDO $pdo): void
 
 function normalize_demo_copy(PDO $pdo): void
 {
+    execute_query("UPDATE users SET full_name = 'Admin ĐộPICI', company = 'ĐộPICI', avatar_label = 'AD' WHERE email = 'admin@webpc.local'");
+    execute_query("UPDATE payment_methods SET holder_name = 'ĐỘPICI' WHERE user_id IN (SELECT id FROM users WHERE email = 'admin@webpc.local')");
+
     execute_query("UPDATE categories SET name = 'PC văn phòng' WHERE slug = 'office'");
     execute_query("UPDATE categories SET name = 'PC gaming' WHERE slug = 'gaming'");
     execute_query("UPDATE categories SET name = 'Thiết bị' WHERE slug = 'gear'");
@@ -288,6 +291,10 @@ function normalize_demo_copy(PDO $pdo): void
     execute_query("UPDATE orders SET status = 'Đang xử lý' WHERE status = 'Dang xu ly'");
     execute_query("UPDATE orders SET status = 'Đang xác nhận' WHERE status = 'Dang xac nhan'");
     execute_query("UPDATE service_requests SET status = 'Mới tiếp nhận' WHERE status = 'Moi tiep nhan'");
+    execute_query("UPDATE services SET title = 'Lắp máy theo yêu cầu' WHERE slug = 'build-custom'");
+    execute_query("UPDATE services SET title = 'Nâng cấp thiết bị' WHERE slug = 'upgrade-pc'");
+    execute_query("UPDATE services SET title = 'Vệ sinh và thay keo tản nhiệt' WHERE slug = 'clean-and-repaste'");
+    execute_query("UPDATE services SET title = 'Bố trí không gian làm việc' WHERE slug = 'workspace-setup'");
     execute_query("UPDATE payment_methods SET method_type = 'visa', bank_name = 'Visa / Mastercard / JCB', account_mask = 'Thẻ quốc tế' WHERE method_type = 'card'");
     execute_query(
         'DELETE FROM payment_methods
@@ -336,7 +343,7 @@ function execute_query(string $sql, array $params = []): bool
 
 function app_title(?string $pageTitle = null): string
 {
-    return $pageTitle ? $pageTitle . ' | webpc' : 'webpc';
+    return $pageTitle ? $pageTitle . ' | ĐộPICI' : 'ĐộPICI';
 }
 
 function h(?string $value): string
@@ -945,7 +952,7 @@ function ensure_default_payment_methods(int $userId): void
 
     $defaults = [
         ['cod', 'COD', 'Thanh toán khi nhận hàng', '', 'Nhận hàng rồi thanh toán tiền mặt hoặc chuyển khoản.'],
-        ['bank_transfer', 'Chuyển khoản ngân hàng', 'QR / STK của WebPC', '', 'Chuyển khoản ngân hàng nội địa.'],
+        ['bank_transfer', 'Chuyển khoản ngân hàng', 'QR / STK của ĐộPICI', '', 'Chuyển khoản ngân hàng nội địa.'],
         ['momo', 'MoMo', 'Ví MoMo', '', 'Thanh toán qua ví MoMo.'],
         ['vnpay', 'VNPay', 'QR VNPay / ATM nội địa', '', 'Thanh toán qua VNPay.'],
         ['bank_card', 'Thẻ ngân hàng nội địa', 'ATM / Napas', '', 'Thanh toán bằng thẻ ngân hàng nội địa.'],
@@ -971,7 +978,7 @@ function ensure_default_payment_methods(int $userId): void
                 'bank_name' => $provider,
                 'account_mask' => $mask,
                 'account_ref' => $ref,
-                'holder_name' => 'WEBPC',
+                'holder_name' => 'ĐỘPICI',
                 'note' => $note,
                 'created_at' => date('Y-m-d H:i:s'),
             ]

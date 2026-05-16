@@ -620,7 +620,7 @@ function process_gateway_connect(): void
             'bank_name' => $gatewayConfig['provider'],
             'account_mask' => $gatewayConfig['mask'],
             'account_ref' => '',
-            'holder_name' => 'WEBPC',
+            'holder_name' => 'ĐỘPICI',
             'note' => $gatewayConfig['note'],
             'created_at' => date('Y-m-d H:i:s'),
         ]

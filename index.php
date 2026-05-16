@@ -21,11 +21,10 @@ include __DIR__ . '/includes/header.php';
             <div class="row g-0 align-items-stretch">
                 <div class="col-xl-7">
                     <div class="hero-copy">
-                        <p class="eyebrow mb-3">cửa hàng webpc</p>
-                        <h1 class="hero-title mb-3">Cửa hàng PC với liquid glass nổi, bố cục gọn và luồng mua hàng rõ ràng.</h1>
+                        <p class="eyebrow mb-3">cửa hàng ĐộPICI</p>
+                        <h1 class="hero-title mb-3">ĐộPICI - cửa hàng máy tính online.</h1>
                         <p class="hero-text mb-4">
-                            Một màn hình, nhiều tác vụ nhưng không bị trùng chức năng.
-                            Header giữ tìm kiếm, còn trang chủ tập trung vào danh mục, sản phẩm bán chạy và lối vào nhanh.
+                            Mua bán, lắp đặt, nâng cấp, vệ sinh PC và triển khai góc làm việc. Tất cả trong một cửa hàng nhỏ gọn, rõ ràng và dễ mua. ĐộPICI hướng đến trải nghiệm mua sắm trực tuyến đơn giản, nhanh chóng và thân thiện cho mọi người.
                         </p>
                         <div class="d-flex flex-wrap gap-2 mb-4">
                             <a class="btn btn-brand btn-lg" href="products.php">Mở danh mục</a>

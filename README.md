@@ -1,4 +1,4 @@
-# webpc
+# ĐộPICI
 
 Website bán PC, thiết bị và dịch vụ chạy trên PHP 8, Bootstrap 5 và MySQL trong XAMPP.
 

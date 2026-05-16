@@ -279,11 +279,19 @@ html[data-theme="dark"] .quick-stat::before {
     height: 48px;
     display: grid;
     place-items: center;
-    border-radius: 8px;
-    background: linear-gradient(180deg, #a4ef2b, #76b900);
-    color: #071005;
-    font-weight: 800;
+    padding: 3px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.7);
     box-shadow: 0 14px 30px rgba(118, 185, 0, 0.28);
+    overflow: hidden;
+}
+
+.brand-box img {
+    width: 100%;
+    height: 100%;
+    display: block;
+    object-fit: cover;
+    border-radius: inherit;
 }
 
 .search-shell,

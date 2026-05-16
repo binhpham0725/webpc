@@ -15,7 +15,7 @@ $searchValue = trim((string) ($_GET['q'] ?? ''));
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?= h(app_title($pageTitle)) ?></title>
-    <meta name="description" content="webpc - website bán thiết bị máy tính với giao diện liquid glass, dark mode, đăng nhập, tài khoản, giỏ hàng và khu vực quản trị sản phẩm.">
+    <meta name="description" content="ĐộPICI - website bán thiết bị máy tính với giao diện liquid glass, dark mode, đăng nhập, tài khoản, giỏ hàng và khu vực quản trị sản phẩm.">
     <script>
         (function () {
             try {
@@ -41,9 +41,11 @@ $searchValue = trim((string) ($_GET['q'] ?? ''));
         <div class="header-shell glass-panel">
             <div class="header-layout">
                 <a class="brand-mark" href="index.php">
-                    <span class="brand-box">wp</span>
+                    <span class="brand-box">
+                        <img src="assets/img/logo-dopici.svg" alt="Logo ĐộPICI">
+                    </span>
                     <span class="brand-copy">
-                        <span class="brand-name">webpc</span>
+                        <span class="brand-name">ĐộPICI</span>
                         <span class="brand-subtitle">PC, thiết bị, dịch vụ</span>
                     </span>
                 </a>

@@ -8,7 +8,7 @@ $footerUser = current_user();
             <div class="glass-panel footer-shell px-4 py-4">
                 <div class="row g-4 align-items-start">
                     <div class="col-lg-5">
-                        <h3 class="h5 mb-3">webpc</h3>
+                        <h3 class="h5 mb-3">ĐộPICI</h3>
                         <p class="text-soft mb-3">
                             Mô hình cửa hàng theo hướng thực chiến: danh mục, chi tiết sản phẩm, giỏ hàng,
                             thanh toán, tài khoản, chế độ tối, xác thực và khu vực quản trị thêm sản phẩm.
