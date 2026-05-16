@@ -57,8 +57,8 @@ document.addEventListener('DOMContentLoaded', function () {
             var targetId = button.getAttribute('data-reveal-grid');
             var hiddenItems = document.querySelectorAll('#' + targetId + ' .featured-extra');
             var expanded = button.getAttribute('data-expanded') === '1';
-            var moreLabel = button.getAttribute('data-more-label') || 'Xem them';
-            var lessLabel = button.getAttribute('data-less-label') || 'Thu gon';
+            var moreLabel = button.getAttribute('data-more-label') || 'Xem thêm';
+            var lessLabel = button.getAttribute('data-less-label') || 'Thu gọn';
 
             hiddenItems.forEach(function (item) {
                 item.classList.toggle('d-none', expanded);
@@ -71,7 +71,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     document.querySelectorAll('[data-spec-builder]').forEach(function (builder) {
         var list = builder.querySelector('[data-spec-list]');
-        var output = document.querySelector('[data-spec-output]');
+        var output = builder.parentElement.querySelector('[data-spec-output]');
         var addButton = builder.querySelector('[data-add-spec]');
 
         function addSpec(label, value) {
@@ -130,7 +130,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     document.querySelectorAll('[data-feature-builder]').forEach(function (builder) {
         var list = builder.querySelector('[data-feature-list]');
-        var output = document.querySelector('[data-feature-output]');
+        var output = builder.parentElement.querySelector('[data-feature-output]');
         var addButton = builder.querySelector('[data-add-feature]');
 
         function addFeature(value) {

@@ -855,6 +855,56 @@ function product_exists_by_slug(string $slug): bool
     return fetch_one('SELECT id FROM products WHERE slug = :slug LIMIT 1', ['slug' => $slug]) !== null;
 }
 
+function product_slug_exists_for_other(string $slug, int $productId): bool
+{
+    return fetch_one(
+        'SELECT id FROM products WHERE slug = :slug AND id != :id LIMIT 1',
+        ['slug' => $slug, 'id' => $productId]
+    ) !== null;
+}
+
+function specs_text_from_product(array $product): string
+{
+    $specs = decode_json_column((string) ($product['specs_json'] ?? ''));
+    $lines = [];
+
+    foreach ($specs as $label => $value) {
+        if (is_scalar($label) && is_scalar($value)) {
+            $lines[] = trim((string) $label) . ': ' . trim((string) $value);
+        }
+    }
+
+    return implode("\n", array_filter($lines));
+}
+
+function features_text_from_product(array $product): string
+{
+    $features = decode_json_column((string) ($product['features_json'] ?? ''));
+    return implode("\n", array_values(array_filter(array_map('strval', $features))));
+}
+
+function product_form_old_from_product(array $product): array
+{
+    return [
+        'product_id' => (string) ($product['id'] ?? ''),
+        'category_id' => (string) ($product['category_id'] ?? ''),
+        'name' => (string) ($product['name'] ?? ''),
+        'slug' => (string) ($product['slug'] ?? ''),
+        'summary' => (string) ($product['summary'] ?? ''),
+        'description' => (string) ($product['description'] ?? ''),
+        'price' => (string) ($product['price'] ?? ''),
+        'old_price' => (string) ($product['old_price'] ?? ''),
+        'stock' => (string) ($product['stock'] ?? '0'),
+        'rating' => (string) ($product['rating'] ?? '4.5'),
+        'featured' => (int) ($product['featured'] ?? 0) === 1 ? '1' : '0',
+        'tags' => (string) ($product['tags'] ?? ''),
+        'cover_image' => (string) ($product['cover_image'] ?? ''),
+        'accent_image' => (string) ($product['accent_image'] ?? ''),
+        'specs_text' => specs_text_from_product($product),
+        'features_text' => features_text_from_product($product),
+    ];
+}
+
 function related_products(array $product, int $limit = 4): array
 {
     return fetch_all(

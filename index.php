@@ -118,7 +118,7 @@ include __DIR__ . '/includes/header.php';
     <div class="container-xxl">
         <div class="section-head d-flex flex-wrap justify-content-between align-items-end gap-3">
             <div>
-                <p class="eyebrow mb-2">vào nhanh</p>
+                <p class="eyebrow mb-2">danh mục</p>
                 <h2 class="h3 mb-0">Danh mục chính</h2>
             </div>
             <a class="btn btn-outline-dark btn-soft" href="products.php?sort=sale">Xem ưu đãi</a>
@@ -144,7 +144,7 @@ include __DIR__ . '/includes/header.php';
         <div class="section-head d-flex flex-wrap justify-content-between align-items-end gap-3">
             <div>
                 <p class="eyebrow mb-2">bán chạy</p>
-                <h2 class="h3 mb-0">Chỉ hiển thị 1 hàng trước, mở rộng khi cần</h2>
+                <h2 class="h3 mb-0">Sản phẩm mới</h2>
             </div>
             <a class="btn btn-outline-dark btn-soft" href="products.php">Xem toàn bộ</a>
         </div>

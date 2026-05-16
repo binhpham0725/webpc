@@ -1281,6 +1281,42 @@ html[data-theme="dark"] .glass-alert {
     grid-template-columns: minmax(0, 1fr) auto;
 }
 
+.admin-product-thumb {
+    width: 88px;
+    height: 72px;
+    object-fit: cover;
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.22);
+    flex: 0 0 auto;
+}
+
+.history-item.is-editing {
+    border-color: rgba(118, 185, 0, 0.75);
+    box-shadow: 0 0 0 1px rgba(118, 185, 0, 0.28), 0 18px 42px rgba(118, 185, 0, 0.16);
+}
+
+.admin-current-media,
+.admin-current-gallery {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    align-items: center;
+    padding: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.22);
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.09);
+    color: var(--text);
+}
+
+.admin-current-media img,
+.admin-current-gallery img {
+    width: 96px;
+    height: 72px;
+    object-fit: cover;
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.22);
+}
+
 .reveal-button {
     min-width: 168px;
 }

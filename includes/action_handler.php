@@ -95,6 +95,10 @@ function handle_post_actions(): void
             process_product_create();
             redirect_to('add-product.php');
 
+        case 'update_product':
+            $editProductId = process_product_update();
+            redirect_to($editProductId > 0 ? 'add-product.php?edit=' . $editProductId : 'add-product.php');
+
         case 'delete_product':
             process_product_delete();
             redirect_to('add-product.php');
@@ -844,6 +848,137 @@ function process_product_create(): void
     );
 
     set_flash('success', 'Đã tạo sản phẩm mới.');
+}
+
+function process_product_update(): int
+{
+    require_admin();
+
+    $productId = (int) ($_POST['product_id'] ?? 0);
+    $product = $productId > 0 ? product_by_id($productId) : null;
+    if ($product === null) {
+        set_flash('danger', 'Không tìm thấy sản phẩm cần sửa.');
+        return 0;
+    }
+
+    $old = [
+        'product_id' => (string) $productId,
+        'category_id' => trim((string) ($_POST['category_id'] ?? '')),
+        'name' => trim((string) ($_POST['name'] ?? '')),
+        'slug' => trim((string) ($_POST['slug'] ?? '')),
+        'summary' => trim((string) ($_POST['summary'] ?? '')),
+        'description' => trim((string) ($_POST['description'] ?? '')),
+        'price' => trim((string) ($_POST['price'] ?? '')),
+        'old_price' => trim((string) ($_POST['old_price'] ?? '')),
+        'stock' => trim((string) ($_POST['stock'] ?? '')),
+        'rating' => trim((string) ($_POST['rating'] ?? '4.5')),
+        'featured' => isset($_POST['featured']) ? '1' : '0',
+        'tags' => trim((string) ($_POST['tags'] ?? '')),
+        'cover_image' => (string) ($product['cover_image'] ?? ''),
+        'accent_image' => (string) ($product['accent_image'] ?? ''),
+        'specs_text' => trim((string) ($_POST['specs_text'] ?? '')),
+        'features_text' => trim((string) ($_POST['features_text'] ?? '')),
+    ];
+
+    $errors = [];
+    $coverUpload = store_uploaded_image('cover_file', 'products', 'product-cover', $errors, 'cover_image');
+    $accentUploads = store_uploaded_images('accent_files', 'products', 'product-accent', $errors, 'accent_image');
+    if ($coverUpload !== '') {
+        $old['cover_image'] = $coverUpload;
+    }
+    if ($accentUploads !== []) {
+        $old['accent_image'] = json_encode($accentUploads, JSON_UNESCAPED_UNICODE);
+    }
+
+    if ($old['category_id'] === '' || fetch_one('SELECT id FROM categories WHERE id = :id LIMIT 1', ['id' => (int) $old['category_id']]) === null) {
+        $errors['category_id'] = 'Chọn danh mục hợp lệ.';
+    }
+    if ($old['name'] === '') {
+        $errors['name'] = 'Nhập tên sản phẩm.';
+    }
+    if ($old['summary'] === '') {
+        $errors['summary'] = 'Nhập mô tả ngắn.';
+    }
+    if ($old['description'] === '') {
+        $errors['description'] = 'Nhập mô tả chi tiết.';
+    }
+    if ($old['price'] === '' || (int) $old['price'] <= 0) {
+        $errors['price'] = 'Nhập giá bán hợp lệ.';
+    }
+    if ($old['old_price'] === '' || (int) $old['old_price'] <= 0) {
+        $errors['old_price'] = 'Nhập giá gốc hợp lệ.';
+    }
+    if ($old['stock'] === '' || (int) $old['stock'] < 0) {
+        $errors['stock'] = 'Nhập tồn kho hợp lệ.';
+    }
+    if ($old['cover_image'] === '' || !valid_image_url($old['cover_image'])) {
+        $errors['cover_image'] = 'Chọn 1 ảnh chính cho sản phẩm.';
+    }
+    if ($old['accent_image'] === '') {
+        $errors['accent_image'] = 'Chọn ít nhất 1 ảnh phụ cho sản phẩm.';
+    }
+
+    $slug = $old['slug'] !== '' ? slugify($old['slug']) : slugify($old['name']);
+    if (product_slug_exists_for_other($slug, $productId)) {
+        $errors['slug'] = 'Slug đã tồn tại.';
+    }
+
+    $specs = specs_from_text($old['specs_text']);
+    $features = lines_to_array($old['features_text']);
+
+    if ($specs === []) {
+        $errors['specs_text'] = 'Nhập thông số theo dạng Nhãn: Giá trị, mỗi dòng một mục.';
+    }
+    if ($features === []) {
+        $errors['features_text'] = 'Nhập ít nhất một điểm nổi bật.';
+    }
+
+    if ($errors !== []) {
+        set_form_state('product_update_' . $productId, $errors, $old);
+        set_flash('danger', 'Kiểm tra lại form sửa sản phẩm.');
+        return $productId;
+    }
+
+    execute_query(
+        'UPDATE products
+         SET category_id = :category_id,
+             slug = :slug,
+             name = :name,
+             summary = :summary,
+             description = :description,
+             price = :price,
+             old_price = :old_price,
+             stock = :stock,
+             rating = :rating,
+             featured = :featured,
+             tags = :tags,
+             cover_image = :cover_image,
+             accent_image = :accent_image,
+             specs_json = :specs_json,
+             features_json = :features_json
+         WHERE id = :id',
+        [
+            'id' => $productId,
+            'category_id' => (int) $old['category_id'],
+            'slug' => $slug,
+            'name' => $old['name'],
+            'summary' => $old['summary'],
+            'description' => $old['description'],
+            'price' => (int) $old['price'],
+            'old_price' => max((int) $old['price'], (int) $old['old_price']),
+            'stock' => (int) $old['stock'],
+            'rating' => max(0, min(5, (float) $old['rating'])),
+            'featured' => $old['featured'] === '1' ? 1 : 0,
+            'tags' => $old['tags'],
+            'cover_image' => $old['cover_image'],
+            'accent_image' => $old['accent_image'],
+            'specs_json' => json_encode($specs, JSON_UNESCAPED_UNICODE),
+            'features_json' => json_encode($features, JSON_UNESCAPED_UNICODE),
+        ]
+    );
+
+    set_flash('success', 'Đã cập nhật sản phẩm "' . $old['name'] . '".');
+    return $productId;
 }
 
 function process_product_delete(): void
