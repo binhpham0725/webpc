@@ -68,4 +68,117 @@ document.addEventListener('DOMContentLoaded', function () {
             button.textContent = expanded ? moreLabel : lessLabel;
         });
     });
+
+    document.querySelectorAll('[data-spec-builder]').forEach(function (builder) {
+        var list = builder.querySelector('[data-spec-list]');
+        var output = document.querySelector('[data-spec-output]');
+        var addButton = builder.querySelector('[data-add-spec]');
+
+        function addSpec(label, value) {
+            var row = document.createElement('div');
+            row.className = 'builder-row spec-builder-row';
+            row.innerHTML = [
+                '<input type="text" class="form-control glass-input" data-spec-label placeholder="Tên thông số">',
+                '<input type="text" class="form-control glass-input" data-spec-value placeholder="Giá trị">',
+                '<button class="btn btn-outline-danger btn-soft btn-sm" type="button" data-remove-row>Xóa</button>'
+            ].join('');
+            list.appendChild(row);
+            row.querySelector('[data-spec-label]').value = label || '';
+            row.querySelector('[data-spec-value]').value = value || '';
+        }
+
+        function syncSpecs() {
+            var lines = [];
+            list.querySelectorAll('.spec-builder-row').forEach(function (row) {
+                var label = row.querySelector('[data-spec-label]').value.trim();
+                var value = row.querySelector('[data-spec-value]').value.trim();
+                if (label !== '' && value !== '') {
+                    lines.push(label + ': ' + value);
+                }
+            });
+            output.value = lines.join('\n');
+        }
+
+        (output.value || '').split(/\r?\n/).filter(Boolean).forEach(function (line) {
+            var parts = line.split(':');
+            var label = parts.shift() || '';
+            addSpec(label.trim(), parts.join(':').trim());
+        });
+
+        if (!list.children.length) {
+            addSpec('CPU', '');
+            addSpec('RAM', '');
+            addSpec('Ổ cứng', '');
+        }
+
+        addButton.addEventListener('click', function () {
+            addSpec('', '');
+        });
+
+        builder.addEventListener('input', syncSpecs);
+        builder.addEventListener('click', function (event) {
+            if (event.target.matches('[data-remove-row]')) {
+                event.target.closest('.builder-row').remove();
+                syncSpecs();
+            }
+        });
+
+        if (builder.closest('form')) {
+            builder.closest('form').addEventListener('submit', syncSpecs);
+        }
+    });
+
+    document.querySelectorAll('[data-feature-builder]').forEach(function (builder) {
+        var list = builder.querySelector('[data-feature-list]');
+        var output = document.querySelector('[data-feature-output]');
+        var addButton = builder.querySelector('[data-add-feature]');
+
+        function addFeature(value) {
+            var row = document.createElement('div');
+            row.className = 'builder-row feature-builder-row';
+            row.innerHTML = [
+                '<input type="text" class="form-control glass-input" data-feature-value placeholder="Nhập điểm nổi bật">',
+                '<button class="btn btn-outline-danger btn-soft btn-sm" type="button" data-remove-row>Xóa</button>'
+            ].join('');
+            list.appendChild(row);
+            row.querySelector('[data-feature-value]').value = value || '';
+        }
+
+        function syncFeatures() {
+            var lines = [];
+            list.querySelectorAll('[data-feature-value]').forEach(function (input) {
+                var value = input.value.trim();
+                if (value !== '') {
+                    lines.push(value);
+                }
+            });
+            output.value = lines.join('\n');
+        }
+
+        (output.value || '').split(/\r?\n/).filter(Boolean).forEach(function (line) {
+            addFeature(line.trim());
+        });
+
+        if (!list.children.length) {
+            addFeature('');
+            addFeature('');
+            addFeature('');
+        }
+
+        addButton.addEventListener('click', function () {
+            addFeature('');
+        });
+
+        builder.addEventListener('input', syncFeatures);
+        builder.addEventListener('click', function (event) {
+            if (event.target.matches('[data-remove-row]')) {
+                event.target.closest('.builder-row').remove();
+                syncFeatures();
+            }
+        });
+
+        if (builder.closest('form')) {
+            builder.closest('form').addEventListener('submit', syncFeatures);
+        }
+    });
 });

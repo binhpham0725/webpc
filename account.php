@@ -15,7 +15,12 @@ $activeNav = 'account';
 $categories = site_categories();
 $payments = payment_methods((int) $user['id']);
 $orders = is_admin() ? recent_orders(8) : recent_orders(8, (int) $user['id']);
+$paymentHistory = is_admin() ? recent_payments(8) : recent_payments(8, (int) $user['id']);
 $requests = is_admin() ? recent_service_requests(8) : recent_service_requests(8, (int) $user['id']);
+$orderStatusOptions = order_status_options();
+$paymentStatusOptions = payment_status_options();
+$paymentTypeOptions = payment_type_options();
+$gatewayOptions = payment_gateway_options();
 $profileState = pull_form_state('profile');
 $paymentState = pull_form_state('payment');
 $avatarState = pull_form_state('avatar');
@@ -110,17 +115,46 @@ include __DIR__ . '/includes/header.php';
                                     <div class="history-item">
                                         <div class="d-flex flex-wrap justify-content-between gap-2">
                                             <div>
-                                                <strong>WP-<?= str_pad((string) $order['id'], 5, '0', STR_PAD_LEFT) ?></strong>
+                                                <strong><?= h(order_code((int) $order['id'])) ?></strong>
                                                 <div class="text-soft small"><?= h((string) $order['created_at']) ?></div>
                                             </div>
                                             <div class="text-end">
-                                                <span class="status-chip is-success"><?= h((string) $order['status']) ?></span>
+                                                <span class="status-chip is-success"><?= h(status_label((string) $order['status'])) ?></span>
                                                 <div class="fw-semibold mt-1"><?= money((int) $order['total_amount']) ?></div>
                                             </div>
                                         </div>
                                         <div class="text-soft mt-2">
                                             <?= h((string) $order['customer_name']) ?> · <?= h((string) $order['payment_method_label']) ?>
                                         </div>
+                                        <?php if (is_admin()): ?>
+                                            <form action="" method="post" class="row g-2 mt-3 align-items-end">
+                                                <input type="hidden" name="action" value="update_order_status">
+                                                <input type="hidden" name="order_id" value="<?= (int) $order['id'] ?>">
+                                                <div class="col-md-5">
+                                                    <label class="form-label small mb-1" for="order_status_<?= (int) $order['id'] ?>">Don hang</label>
+                                                    <select id="order_status_<?= (int) $order['id'] ?>" name="order_status" class="form-select glass-select">
+                                                        <?php foreach ($orderStatusOptions as $value => $label): ?>
+                                                            <option value="<?= h($value) ?>" <?= (string) $order['status'] === $value ? 'selected' : '' ?>><?= h($label) ?></option>
+                                                        <?php endforeach; ?>
+                                                    </select>
+                                                </div>
+                                                <div class="col-md-5">
+                                                    <label class="form-label small mb-1" for="payment_status_<?= (int) $order['id'] ?>">Thanh toán</label>
+                                                    <select id="payment_status_<?= (int) $order['id'] ?>" name="payment_status" class="form-select glass-select">
+                                                        <?php
+                                                        $orderPayment = fetch_one('SELECT status FROM payments WHERE order_id = :order_id LIMIT 1', ['order_id' => (int) $order['id']]);
+                                                        $currentPaymentStatus = (string) ($orderPayment['status'] ?? 'pending');
+                                                        ?>
+                                                        <?php foreach ($paymentStatusOptions as $value => $label): ?>
+                                                            <option value="<?= h($value) ?>" <?= $currentPaymentStatus === $value ? 'selected' : '' ?>><?= h($label) ?></option>
+                                                        <?php endforeach; ?>
+                                                    </select>
+                                                </div>
+                                                <div class="col-md-2 d-grid">
+                                                    <button class="btn btn-outline-dark btn-soft btn-sm" type="submit">Luu</button>
+                                                </div>
+                                            </form>
+                                        <?php endif; ?>
                                     </div>
                                 <?php endforeach; ?>
                             </div>
@@ -145,10 +179,15 @@ include __DIR__ . '/includes/header.php';
                                 <div class="text-soft">Dùng URL ảnh jpg, png, webp hoặc ảnh Unsplash.</div>
                             </div>
 
-                            <form action="" method="post" class="row g-3">
+                            <form action="" method="post" enctype="multipart/form-data" class="row g-3">
                                 <input type="hidden" name="action" value="update_avatar">
                                 <div class="col-12">
-                                    <label class="form-label" for="avatar_url">Liên kết ảnh đại diện</label>
+                                    <label class="form-label" for="avatar_file">Chon anh tu may</label>
+                                    <input id="avatar_file" name="avatar_file" type="file" accept="image/jpeg,image/png,image/webp,image/gif" class="form-control glass-input <?= field_error($avatarState, 'avatar_file') !== '' ? 'is-invalid-soft' : '' ?>">
+                                    <?php if (field_error($avatarState, 'avatar_file') !== ''): ?><span class="field-error"><?= h(field_error($avatarState, 'avatar_file')) ?></span><?php endif; ?>
+                                </div>
+                                <div class="col-12">
+                                    <label class="form-label" for="avatar_url">Hoac dan link anh</label>
                                     <input id="avatar_url" name="avatar_url" class="form-control glass-input <?= field_error($avatarState, 'avatar_url') !== '' ? 'is-invalid-soft' : '' ?>" value="<?= h($avatarValue) ?>" placeholder="https://...">
                                     <?php if (field_error($avatarState, 'avatar_url') !== ''): ?><span class="field-error"><?= h(field_error($avatarState, 'avatar_url')) ?></span><?php endif; ?>
                                 </div>
@@ -164,7 +203,44 @@ include __DIR__ . '/includes/header.php';
 
                     <div class="payment-panel">
                         <p class="eyebrow mb-2">thanh toán</p>
-                        <h2 class="h4 mb-3">Phương thức đã lưu</h2>
+                        <h2 class="h4 mb-3">Cổng thanh toán trực tuyến</h2>
+                        <div class="payment-gateway-list mb-4">
+                            <?php foreach ($gatewayOptions as $gatewayKey => $gateway): ?>
+                                <?php
+                                $isConnected = false;
+                                foreach ($payments as $payment) {
+                                    if ((string) ($payment['method_type'] ?? '') === $gatewayKey) {
+                                        $isConnected = true;
+                                        break;
+                                    }
+                                }
+                                ?>
+                                <div class="payment-gateway-row">
+                                    <div class="gateway-brand"><span><?= h((string) $gateway['badge']) ?></span></div>
+                                    <div class="gateway-copy">
+                                        <strong><?= h((string) $gateway['name']) ?></strong>
+                                        <div class="text-soft small">
+                                            <?= h((string) $gateway['description']) ?>
+                                            <?php if ($isConnected): ?>
+                                                <span class="gateway-status">Đang sử dụng</span>
+                                            <?php endif; ?>
+                                        </div>
+                                    </div>
+                                    <form action="" method="post" class="ms-auto">
+                                        <input type="hidden" name="action" value="connect_gateway">
+                                        <input type="hidden" name="gateway" value="<?= h($gatewayKey) ?>">
+                                        <button class="btn btn-primary btn-sm" type="submit">Kết nối</button>
+                                    </form>
+                                </div>
+                            <?php endforeach; ?>
+                        </div>
+                        <div class="manual-payment-head mb-3">
+                            <div>
+                                <h3 class="h5 mb-1">Phương thức thanh toán thủ công</h3>
+                                <div class="text-soft small">Quản lý tài khoản ngân hàng, tiền mặt và các phương thức tự nhập.</div>
+                            </div>
+                            <a class="btn btn-primary btn-sm" href="#manual_payment_form"><i class="bi bi-plus-circle"></i> Thêm phương thức</a>
+                        </div>
                         <div class="d-grid gap-3 mb-4">
                             <?php if ($payments === []): ?>
                                 <div class="empty-panel">Chưa có phương thức thanh toán nào.</div>
@@ -173,8 +249,8 @@ include __DIR__ . '/includes/header.php';
                                     <div class="history-item">
                                         <div class="d-flex justify-content-between gap-3">
                                             <div>
-                                                <strong><?= h((string) $payment['bank_name']) ?></strong>
-                                                <div class="text-soft"><?= h((string) $payment['account_mask']) ?> · <?= h((string) $payment['holder_name']) ?></div>
+                                                <strong><?= h(payment_type_label((string) ($payment['method_type'] ?? 'bank_transfer'))) ?></strong>
+                                                <div class="text-soft"><?= h(payment_method_display($payment)) ?> · <?= h((string) $payment['holder_name']) ?></div>
                                                 <?php if (trim((string) $payment['note']) !== ''): ?>
                                                     <div class="text-soft small mt-1"><?= h((string) $payment['note']) ?></div>
                                                 <?php endif; ?>
@@ -191,15 +267,24 @@ include __DIR__ . '/includes/header.php';
                         </div>
 
                         <h3 class="h5 mb-3">Thêm phương thức mới</h3>
-                        <form action="" method="post" class="row g-3">
+                        <form id="manual_payment_form" action="" method="post" class="row g-3">
                             <input type="hidden" name="action" value="add_payment">
                             <div class="col-12">
-                                <label class="form-label" for="bank_name">Ngân hàng</label>
-                                <input id="bank_name" name="bank_name" class="form-control glass-input <?= field_error($paymentState, 'bank_name') !== '' ? 'is-invalid-soft' : '' ?>" value="<?= h(field_value($paymentState, 'bank_name')) ?>">
+                                <label class="form-label" for="method_type">Loại thanh toán</label>
+                                <select id="method_type" name="method_type" class="form-select glass-select <?= field_error($paymentState, 'method_type') !== '' ? 'is-invalid-soft' : '' ?>">
+                                    <?php foreach ($paymentTypeOptions as $value => $label): ?>
+                                        <option value="<?= h($value) ?>" <?= field_value($paymentState, 'method_type', 'bank_transfer') === $value ? 'selected' : '' ?>><?= h($label) ?></option>
+                                    <?php endforeach; ?>
+                                </select>
+                                <?php if (field_error($paymentState, 'method_type') !== ''): ?><span class="field-error"><?= h(field_error($paymentState, 'method_type')) ?></span><?php endif; ?>
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label" for="bank_name">Ngân hàng / nhà cung cấp</label>
+                                <input id="bank_name" name="bank_name" class="form-control glass-input <?= field_error($paymentState, 'bank_name') !== '' ? 'is-invalid-soft' : '' ?>" value="<?= h(field_value($paymentState, 'bank_name')) ?>" placeholder="VD: Vietcombank, MoMo, ZaloPay, VNPay">
                                 <?php if (field_error($paymentState, 'bank_name') !== ''): ?><span class="field-error"><?= h(field_error($paymentState, 'bank_name')) ?></span><?php endif; ?>
                             </div>
                             <div class="col-md-6">
-                                <label class="form-label" for="account_number">Số tài khoản</label>
+                                <label class="form-label" for="account_number">Số tài khoản / số ví</label>
                                 <input id="account_number" name="account_number" class="form-control glass-input <?= field_error($paymentState, 'account_number') !== '' ? 'is-invalid-soft' : '' ?>" value="<?= h(field_value($paymentState, 'account_number')) ?>">
                                 <?php if (field_error($paymentState, 'account_number') !== ''): ?><span class="field-error"><?= h(field_error($paymentState, 'account_number')) ?></span><?php endif; ?>
                             </div>
@@ -216,6 +301,34 @@ include __DIR__ . '/includes/header.php';
                                 <button class="btn btn-brand" type="submit">Thêm phương thức</button>
                             </div>
                         </form>
+                    </div>
+
+                    <div class="payment-panel">
+                        <p class="eyebrow mb-2"><?= is_admin() ? 'bang thanh toan' : 'lich su thanh toan' ?></p>
+                        <h2 class="h4 mb-3"><?= is_admin() ? 'Thanh toán gần đây' : 'Thanh toán của bạn' ?></h2>
+                        <?php if ($paymentHistory === []): ?>
+                            <div class="empty-panel">Chua co giao dich thanh toan nao.</div>
+                        <?php else: ?>
+                            <div class="d-grid gap-3">
+                                <?php foreach ($paymentHistory as $paymentRow): ?>
+                                    <div class="history-item">
+                                        <div class="d-flex flex-wrap justify-content-between gap-2">
+                                            <div>
+                                                <strong><?= h((string) $paymentRow['payment_code']) ?></strong>
+                                                <div class="text-soft small"><?= h((string) $paymentRow['created_at']) ?></div>
+                                            </div>
+                                            <div class="text-end">
+                                                <span class="status-chip is-warning"><?= h(status_label((string) $paymentRow['status'], 'payment')) ?></span>
+                                                <div class="fw-semibold mt-1"><?= money((int) $paymentRow['amount']) ?></div>
+                                            </div>
+                                        </div>
+                                        <div class="text-soft mt-2">
+                                            <?= h((string) $paymentRow['customer_name']) ?> · <?= h((string) $paymentRow['provider']) ?> · <?= h((string) $paymentRow['payment_method_label']) ?>
+                                        </div>
+                                    </div>
+                                <?php endforeach; ?>
+                            </div>
+                        <?php endif; ?>
                     </div>
 
                     <div class="payment-panel">

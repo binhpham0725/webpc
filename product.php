@@ -18,6 +18,7 @@ $related = related_products($product, 4);
 $specs = decode_json_column((string) $product['specs_json']);
 $features = decode_json_column((string) $product['features_json']);
 $tags = product_tags($product);
+$accentImages = product_accent_images($product);
 
 include __DIR__ . '/includes/header.php';
 ?>
@@ -67,9 +68,13 @@ include __DIR__ . '/includes/header.php';
                                     <span class="spec-pill tag-pill"><?= h($tag) ?></span>
                                 <?php endforeach; ?>
                             </div>
-                            <div class="mt-4">
-                                <img class="img-fluid rounded-3" src="<?= h((string) $product['accent_image']) ?>" alt="<?= h((string) $product['name']) ?> góc phụ">
-                            </div>
+                            <?php if ($accentImages !== []): ?>
+                                <div class="mt-4 product-accent-grid">
+                                    <?php foreach ($accentImages as $accentImage): ?>
+                                        <img class="img-fluid rounded-3" src="<?= h($accentImage) ?>" alt="<?= h((string) $product['name']) ?> ảnh phụ">
+                                    <?php endforeach; ?>
+                                </div>
+                            <?php endif; ?>
                         </div>
                     </div>
                 </article>

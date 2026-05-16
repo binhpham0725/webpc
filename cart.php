@@ -10,6 +10,17 @@ $items = cart_items();
 $totals = cart_totals($items);
 $profile = current_profile_defaults();
 $payments = is_logged_in() ? payment_methods((int) current_user_id()) : [];
+$preferredPaymentTypes = ['momo', 'vnpay', 'bank_card', 'visa', 'cod', 'bank_transfer'];
+$checkoutPayments = [];
+foreach ($preferredPaymentTypes as $type) {
+    foreach ($payments as $payment) {
+        if ((string) ($payment['method_type'] ?? 'bank_transfer') === $type) {
+            $checkoutPayments[] = $payment;
+            break;
+        }
+    }
+}
+$checkoutPayments = $checkoutPayments !== [] ? $checkoutPayments : $payments;
 $checkoutState = pull_form_state('checkout');
 
 include __DIR__ . '/includes/header.php';
@@ -122,19 +133,28 @@ include __DIR__ . '/includes/header.php';
                                 <input id="phone" name="phone" class="form-control glass-input <?= field_error($checkoutState, 'phone') !== '' ? 'is-invalid-soft' : '' ?>" value="<?= h(field_value($checkoutState, 'phone', (string) $profile['phone'])) ?>">
                                 <?php if (field_error($checkoutState, 'phone') !== ''): ?><span class="field-error"><?= h(field_error($checkoutState, 'phone')) ?></span><?php endif; ?>
                             </div>
-                            <div class="col-md-6">
-                                <label class="form-label" for="payment_method_id">Phương thức thanh toán</label>
-                                <select id="payment_method_id" name="payment_method_id" class="form-select glass-select <?= field_error($checkoutState, 'payment_method_id') !== '' ? 'is-invalid-soft' : '' ?>">
-                                    <option value="">Chọn phương thức</option>
-                                    <?php foreach ($payments as $payment): ?>
-                                        <option value="<?= (int) $payment['id'] ?>" <?= field_value($checkoutState, 'payment_method_id') === (string) $payment['id'] ? 'selected' : '' ?>>
-                                            <?= h((string) $payment['bank_name']) ?> - <?= h((string) $payment['account_mask']) ?>
-                                        </option>
+                            <div class="col-12">
+                                <label class="form-label">Phương thức thanh toán</label>
+                                <div class="checkout-payment-grid <?= field_error($checkoutState, 'payment_method_id') !== '' ? 'is-invalid-soft' : '' ?>">
+                                    <?php foreach ($checkoutPayments as $index => $payment): ?>
+                                        <?php
+                                        $paymentId = (int) $payment['id'];
+                                        $paymentType = (string) ($payment['method_type'] ?? 'bank_transfer');
+                                        $checked = field_value($checkoutState, 'payment_method_id') === (string) $paymentId || (field_value($checkoutState, 'payment_method_id') === '' && $index === 0);
+                                        ?>
+                                        <label class="checkout-payment-option">
+                                            <input type="radio" name="payment_method_id" value="<?= $paymentId ?>" <?= $checked ? 'checked' : '' ?>>
+                                            <span class="checkout-payment-logo"><?= h(payment_type_label($paymentType)) ?></span>
+                                            <span class="checkout-payment-copy">
+                                                <strong><?= h(payment_type_label($paymentType)) ?></strong>
+                                                <small><?= h(payment_method_display($payment)) ?></small>
+                                            </span>
+                                        </label>
                                     <?php endforeach; ?>
-                                </select>
+                                </div>
                                 <?php if (field_error($checkoutState, 'payment_method_id') !== ''): ?><span class="field-error"><?= h(field_error($checkoutState, 'payment_method_id')) ?></span><?php endif; ?>
                                 <?php if ($payments === []): ?>
-                                    <div class="field-error">Chưa có phương thức thanh toán. Thêm trong trang tài khoản trước khi checkout.</div>
+                                    <div class="field-error">Chưa có phương thức thanh toán.</div>
                                 <?php endif; ?>
                             </div>
                             <div class="col-12">

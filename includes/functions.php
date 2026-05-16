@@ -22,80 +22,201 @@ function db(): PDO
         return $pdo;
     }
 
-    $pdo = new PDO('sqlite:' . base_path('database/webpc.sqlite'));
+    $host = getenv('WEBPC_DB_HOST') ?: '127.0.0.1';
+    $port = getenv('WEBPC_DB_PORT') ?: '3306';
+    $name = getenv('WEBPC_DB_NAME') ?: 'webpc';
+    $user = getenv('WEBPC_DB_USER') ?: 'root';
+    $pass = getenv('WEBPC_DB_PASS') ?: '';
+
+    $server = new PDO(
+        "mysql:host={$host};port={$port};charset=utf8mb4",
+        $user,
+        $pass,
+        [
+            PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+            PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+            PDO::ATTR_EMULATE_PREPARES => true,
+        ]
+    );
+    $server->exec("CREATE DATABASE IF NOT EXISTS `{$name}` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
+
+    $pdo = new PDO(
+        "mysql:host={$host};port={$port};dbname={$name};charset=utf8mb4",
+        $user,
+        $pass,
+        [
+            PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+            PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+            PDO::ATTR_EMULATE_PREPARES => true,
+        ]
+    );
     $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
     $pdo->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
-    $pdo->exec('PRAGMA foreign_keys = ON;');
 
     return $pdo;
 }
 
 function table_exists(string $table): bool
 {
-    $stmt = db()->prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = :name LIMIT 1");
+    $stmt = db()->prepare(
+        'SELECT TABLE_NAME
+         FROM information_schema.TABLES
+         WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = :name
+         LIMIT 1'
+    );
     $stmt->execute(['name' => $table]);
     return $stmt->fetchColumn() !== false;
 }
 
 function column_exists(string $table, string $column): bool
 {
-    $stmt = db()->query('PRAGMA table_info(' . $table . ')');
-    $columns = $stmt->fetchAll();
-
-    foreach ($columns as $info) {
-        if (($info['name'] ?? '') === $column) {
-            return true;
-        }
-    }
-
-    return false;
+    $stmt = db()->prepare(
+        'SELECT COLUMN_NAME
+         FROM information_schema.COLUMNS
+         WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = :table_name AND COLUMN_NAME = :column_name
+         LIMIT 1'
+    );
+    $stmt->execute(['table_name' => $table, 'column_name' => $column]);
+    return $stmt->fetchColumn() !== false;
 }
 
 function initialize_database(PDO $pdo): void
 {
     if (!table_exists('products')) {
-        $schema = file_get_contents(base_path('database/schema.sql'));
+        $schema = file_get_contents(base_path('database/schema.mysql.sql'));
         if ($schema === false) {
-            throw new RuntimeException('Cannot read schema.sql');
+            throw new RuntimeException('Cannot read schema.mysql.sql');
         }
 
-        $pdo->exec($schema);
+        foreach (sql_statements($schema) as $statement) {
+            $pdo->exec($statement);
+        }
     }
 
     ensure_runtime_schema($pdo);
 }
 
+function sql_statements(string $sql): array
+{
+    $sql = preg_replace('/^\s*--.*$/m', '', $sql) ?? $sql;
+    return array_values(array_filter(array_map('trim', explode(';', $sql))));
+}
+
 function ensure_runtime_schema(PDO $pdo): void
 {
-    $pdo->exec(
+    $runtimeTables = [
         "CREATE TABLE IF NOT EXISTS users (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            role TEXT NOT NULL DEFAULT 'customer',
-            full_name TEXT NOT NULL,
-            email TEXT NOT NULL UNIQUE,
-            password_hash TEXT NOT NULL,
-            phone TEXT NOT NULL DEFAULT '',
-            company TEXT NOT NULL DEFAULT '',
-            address TEXT NOT NULL DEFAULT '',
-            city TEXT NOT NULL DEFAULT '',
-            note TEXT NOT NULL DEFAULT '',
-            avatar_label TEXT NOT NULL DEFAULT 'WP',
-            avatar_url TEXT NOT NULL DEFAULT '',
-            created_at TEXT NOT NULL,
-            updated_at TEXT NOT NULL
-        )"
-    );
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            role VARCHAR(32) NOT NULL DEFAULT 'customer',
+            full_name VARCHAR(190) NOT NULL,
+            email VARCHAR(190) NOT NULL UNIQUE,
+            password_hash VARCHAR(255) NOT NULL,
+            phone VARCHAR(40) NOT NULL DEFAULT '',
+            company VARCHAR(190) NOT NULL DEFAULT '',
+            address VARCHAR(255) NOT NULL DEFAULT '',
+            city VARCHAR(120) NOT NULL DEFAULT '',
+            note TEXT NOT NULL,
+            avatar_label VARCHAR(20) NOT NULL DEFAULT 'WP',
+            avatar_url VARCHAR(500) NOT NULL DEFAULT '',
+            created_at DATETIME NOT NULL,
+            updated_at DATETIME NOT NULL
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
+        "CREATE TABLE IF NOT EXISTS payment_methods (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            user_id INT NOT NULL,
+            method_type VARCHAR(60) NOT NULL DEFAULT 'bank_transfer',
+            bank_name VARCHAR(190) NOT NULL,
+            account_mask VARCHAR(190) NOT NULL,
+            account_ref VARCHAR(190) NOT NULL DEFAULT '',
+            holder_name VARCHAR(190) NOT NULL,
+            note TEXT NOT NULL,
+            created_at DATETIME NOT NULL,
+            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
+        "CREATE TABLE IF NOT EXISTS orders (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            user_id INT DEFAULT NULL,
+            customer_name VARCHAR(190) NOT NULL,
+            email VARCHAR(190) NOT NULL,
+            phone VARCHAR(40) NOT NULL,
+            address VARCHAR(255) NOT NULL,
+            payment_method_label VARCHAR(255) NOT NULL,
+            note TEXT NOT NULL,
+            subtotal INT NOT NULL,
+            shipping_fee INT NOT NULL,
+            discount_amount INT NOT NULL DEFAULT 0,
+            total_amount INT NOT NULL,
+            status VARCHAR(60) NOT NULL,
+            created_at DATETIME NOT NULL,
+            updated_at DATETIME DEFAULT NULL,
+            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
+        "CREATE TABLE IF NOT EXISTS order_items (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            order_id INT NOT NULL,
+            product_id INT NOT NULL,
+            quantity INT NOT NULL,
+            unit_price INT NOT NULL,
+            line_total INT NOT NULL,
+            FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE,
+            FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
+        "CREATE TABLE IF NOT EXISTS service_requests (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            user_id INT DEFAULT NULL,
+            service_id INT NOT NULL,
+            customer_name VARCHAR(190) NOT NULL,
+            email VARCHAR(190) NOT NULL,
+            phone VARCHAR(40) NOT NULL,
+            budget VARCHAR(190) NOT NULL,
+            note TEXT NOT NULL,
+            status VARCHAR(60) NOT NULL,
+            created_at DATETIME NOT NULL,
+            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL,
+            FOREIGN KEY (service_id) REFERENCES services(id) ON DELETE CASCADE
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
+        "CREATE TABLE IF NOT EXISTS payments (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            order_id INT NOT NULL,
+            user_id INT DEFAULT NULL,
+            provider VARCHAR(190) NOT NULL,
+            payment_code VARCHAR(60) NOT NULL UNIQUE,
+            amount INT NOT NULL,
+            status VARCHAR(60) NOT NULL,
+            paid_at DATETIME DEFAULT NULL,
+            created_at DATETIME NOT NULL,
+            updated_at DATETIME NOT NULL,
+            FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE,
+            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
+    ];
+
+    foreach ($runtimeTables as $sql) {
+        $pdo->exec($sql);
+    }
 
     if (!column_exists('payment_methods', 'user_id')) {
-        $pdo->exec('ALTER TABLE payment_methods ADD COLUMN user_id INTEGER NOT NULL DEFAULT 1');
+        $pdo->exec('ALTER TABLE payment_methods ADD COLUMN user_id INT NOT NULL DEFAULT 1');
+    }
+
+    if (!column_exists('payment_methods', 'method_type')) {
+        $pdo->exec("ALTER TABLE payment_methods ADD COLUMN method_type VARCHAR(60) NOT NULL DEFAULT 'bank_transfer'");
+    }
+
+    if (!column_exists('payment_methods', 'account_ref')) {
+        $pdo->exec("ALTER TABLE payment_methods ADD COLUMN account_ref VARCHAR(190) NOT NULL DEFAULT ''");
     }
 
     if (!column_exists('orders', 'user_id')) {
-        $pdo->exec('ALTER TABLE orders ADD COLUMN user_id INTEGER DEFAULT NULL');
+        $pdo->exec('ALTER TABLE orders ADD COLUMN user_id INT DEFAULT NULL');
+    }
+
+    if (!column_exists('orders', 'updated_at')) {
+        $pdo->exec('ALTER TABLE orders ADD COLUMN updated_at DATETIME DEFAULT NULL');
     }
 
     if (!column_exists('service_requests', 'user_id')) {
-        $pdo->exec('ALTER TABLE service_requests ADD COLUMN user_id INTEGER DEFAULT NULL');
+        $pdo->exec('ALTER TABLE service_requests ADD COLUMN user_id INT DEFAULT NULL');
     }
 
     seed_default_admin($pdo);
@@ -167,6 +288,15 @@ function normalize_demo_copy(PDO $pdo): void
     execute_query("UPDATE orders SET status = 'Đang xử lý' WHERE status = 'Dang xu ly'");
     execute_query("UPDATE orders SET status = 'Đang xác nhận' WHERE status = 'Dang xac nhan'");
     execute_query("UPDATE service_requests SET status = 'Mới tiếp nhận' WHERE status = 'Moi tiep nhan'");
+    execute_query("UPDATE payment_methods SET method_type = 'visa', bank_name = 'Visa / Mastercard / JCB', account_mask = 'Thẻ quốc tế' WHERE method_type = 'card'");
+    execute_query(
+        'DELETE FROM payment_methods
+         WHERE id NOT IN (
+             SELECT MIN(id)
+             FROM payment_methods
+             GROUP BY user_id, method_type, bank_name, account_mask
+         )'
+    );
 }
 
 function bind_and_execute(PDOStatement $stmt, array $params = []): void
@@ -234,6 +364,10 @@ function valid_image_url(string $url): bool
 {
     if ($url === '') {
         return false;
+    }
+
+    if (preg_match('/^storage\/uploads\/(avatars|products)\/[A-Za-z0-9._-]+\.(jpg|jpeg|png|webp|gif)$/i', $url) === 1) {
+        return true;
     }
 
     if (!filter_var($url, FILTER_VALIDATE_URL)) {
@@ -402,6 +536,27 @@ function decode_json_column(?string $json): array
 
     $decoded = json_decode($json, true);
     return is_array($decoded) ? $decoded : [];
+}
+
+function product_accent_images(array $product): array
+{
+    $raw = trim((string) ($product['accent_image'] ?? ''));
+    if ($raw === '') {
+        return [];
+    }
+
+    $decoded = json_decode($raw, true);
+    if (is_array($decoded)) {
+        return array_values(array_filter(array_map('strval', $decoded)));
+    }
+
+    return [$raw];
+}
+
+function product_first_accent_image(array $product): string
+{
+    $images = product_accent_images($product);
+    return $images[0] ?? (string) ($product['cover_image'] ?? '');
 }
 
 function product_tags(array $product): array
@@ -577,8 +732,7 @@ function featured_products(int $limit = 8): array
         'SELECT p.*, c.slug AS category_slug, c.name AS category_name
          FROM products p
          INNER JOIN categories c ON c.id = p.category_id
-         WHERE p.featured = 1
-         ORDER BY p.sort_order ASC, p.rating DESC
+         ORDER BY p.id DESC, p.featured DESC, p.sort_order ASC
          LIMIT :limit',
         ['limit' => $limit]
     );
@@ -725,10 +879,157 @@ function payment_methods(?int $userId = null): array
         return [];
     }
 
+    ensure_default_payment_methods((int) $userId);
+
     return fetch_all(
         'SELECT * FROM payment_methods WHERE user_id = :user_id ORDER BY created_at DESC, id DESC',
         ['user_id' => $userId]
     );
+}
+
+function ensure_default_payment_methods(int $userId): void
+{
+    if ($userId <= 0) {
+        return;
+    }
+
+    $defaults = [
+        ['cod', 'COD', 'Thanh toán khi nhận hàng', '', 'Nhận hàng rồi thanh toán tiền mặt hoặc chuyển khoản.'],
+        ['bank_transfer', 'Chuyển khoản ngân hàng', 'QR / STK của WebPC', '', 'Chuyển khoản ngân hàng nội địa.'],
+        ['momo', 'MoMo', 'Ví MoMo', '', 'Thanh toán qua ví MoMo.'],
+        ['vnpay', 'VNPay', 'QR VNPay / ATM nội địa', '', 'Thanh toán qua VNPay.'],
+        ['bank_card', 'Thẻ ngân hàng nội địa', 'ATM / Napas', '', 'Thanh toán bằng thẻ ngân hàng nội địa.'],
+        ['visa', 'Visa / Mastercard / JCB', 'Thẻ quốc tế', '', 'Thanh toán bằng Visa, Mastercard hoặc JCB.'],
+    ];
+
+    foreach ($defaults as [$type, $provider, $mask, $ref, $note]) {
+        $exists = fetch_one(
+            'SELECT id FROM payment_methods WHERE user_id = :user_id AND method_type = :method_type LIMIT 1',
+            ['user_id' => $userId, 'method_type' => $type]
+        );
+
+        if ($exists !== null) {
+            continue;
+        }
+
+        execute_query(
+            'INSERT INTO payment_methods (user_id, method_type, bank_name, account_mask, account_ref, holder_name, note, created_at)
+             VALUES (:user_id, :method_type, :bank_name, :account_mask, :account_ref, :holder_name, :note, :created_at)',
+            [
+                'user_id' => $userId,
+                'method_type' => $type,
+                'bank_name' => $provider,
+                'account_mask' => $mask,
+                'account_ref' => $ref,
+                'holder_name' => 'WEBPC',
+                'note' => $note,
+                'created_at' => date('Y-m-d H:i:s'),
+            ]
+        );
+    }
+}
+
+function payment_gateway_options(): array
+{
+    return [
+        'vnpay' => [
+            'name' => 'VNPAY QR',
+            'description' => 'Giải pháp thanh toán trực tuyến dành cho nhà bán hàng online.',
+            'badge' => 'VNPAY',
+            'provider' => 'VNPay',
+            'mask' => 'QR VNPay / ATM nội địa / Visa / Mastercard',
+            'note' => 'Cổng thanh toán VNPay.',
+        ],
+        'momo' => [
+            'name' => 'MoMo',
+            'description' => 'Ví điện tử phổ biến tại Việt Nam, hỗ trợ QR và ứng dụng MoMo.',
+            'badge' => 'MoMo',
+            'provider' => 'MoMo',
+            'mask' => 'Vi MoMo',
+            'note' => 'Thanh toán qua ví MoMo.',
+        ],
+        'bank_card' => [
+            'name' => 'Thẻ ngân hàng',
+            'description' => 'Thanh toán bằng ATM nội địa, Napas và Internet Banking.',
+            'badge' => 'ATM',
+            'provider' => 'Thẻ ngân hàng nội địa',
+            'mask' => 'ATM / Napas',
+            'note' => 'Thanh toán bằng thẻ ngân hàng nội địa.',
+        ],
+        'visa' => [
+            'name' => 'Visa / Mastercard',
+            'description' => 'Thanh toán bằng thẻ quốc tế Visa, Mastercard hoặc JCB.',
+            'badge' => 'VISA',
+            'provider' => 'Visa / Mastercard / JCB',
+            'mask' => 'Thẻ quốc tế',
+            'note' => 'Thanh toán bằng Visa, Mastercard hoặc JCB.',
+        ],
+    ];
+}
+
+function payment_type_options(): array
+{
+    return [
+        'momo' => 'MoMo',
+        'vnpay' => 'VNPay',
+        'bank_card' => 'Thẻ ngân hàng',
+        'visa' => 'Visa / Mastercard',
+        'zalopay' => 'ZaloPay',
+        'bank_transfer' => 'Chuyển khoản ngân hàng',
+        'cod' => 'COD - Thanh toán khi nhận hàng',
+    ];
+}
+
+function payment_type_label(string $type): string
+{
+    $options = payment_type_options();
+    return $options[$type] ?? $type;
+}
+
+function payment_method_display(array $payment): string
+{
+    $type = (string) ($payment['method_type'] ?? 'bank_transfer');
+    $provider = trim((string) ($payment['bank_name'] ?? ''));
+    $mask = trim((string) ($payment['account_mask'] ?? ''));
+
+    if ($provider === '') {
+        return payment_type_label($type);
+    }
+
+    return $mask !== '' ? $provider . ' - ' . $mask : $provider;
+}
+
+function order_code(int $orderId): string
+{
+    return 'WP-' . str_pad((string) $orderId, 5, '0', STR_PAD_LEFT);
+}
+
+function order_status_options(): array
+{
+    return [
+        'pending' => 'Dang xu ly',
+        'paid' => 'Da thanh toan',
+        'shipping' => 'Dang giao',
+        'completed' => 'Hoan tat',
+        'cancelled' => 'Da huy',
+    ];
+}
+
+function payment_status_options(): array
+{
+    return [
+        'pending' => 'Cho xac nhan',
+        'paid' => 'Da thanh toan',
+        'failed' => 'That bai',
+        'refunded' => 'Da hoan tien',
+        'cancelled' => 'Da huy',
+    ];
+}
+
+function status_label(string $status, string $type = 'order'): string
+{
+    $options = $type === 'payment' ? payment_status_options() : order_status_options();
+    return $options[$status] ?? $status;
 }
 
 function recent_orders(int $limit = 5, ?int $userId = null): array
@@ -741,6 +1042,23 @@ function recent_orders(int $limit = 5, ?int $userId = null): array
         'SELECT * FROM orders WHERE user_id = :user_id ORDER BY created_at DESC, id DESC LIMIT :limit',
         ['user_id' => $userId, 'limit' => $limit]
     );
+}
+
+function recent_payments(int $limit = 5, ?int $userId = null): array
+{
+    $sql = 'SELECT p.*, o.customer_name, o.payment_method_label, o.status AS order_status
+            FROM payments p
+            INNER JOIN orders o ON o.id = p.order_id';
+    $params = ['limit' => $limit];
+
+    if ($userId !== null) {
+        $sql .= ' WHERE p.user_id = :user_id';
+        $params['user_id'] = $userId;
+    }
+
+    $sql .= ' ORDER BY p.created_at DESC, p.id DESC LIMIT :limit';
+
+    return fetch_all($sql, $params);
 }
 
 function recent_service_requests(int $limit = 5, ?int $userId = null): array

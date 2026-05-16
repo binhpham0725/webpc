@@ -25,7 +25,7 @@ include __DIR__ . '/includes/header.php';
                         Khu vực này chỉ dành cho admin. Sản phẩm mới được ghi trực tiếp vào database và xuất hiện trong danh mục.
                     </p>
 
-                    <form action="" method="post" class="row g-3">
+                    <form action="" method="post" enctype="multipart/form-data" class="row g-3">
                         <input type="hidden" name="action" value="create_product">
 
                         <div class="col-md-6">
@@ -101,26 +101,34 @@ include __DIR__ . '/includes/header.php';
                         </div>
 
                         <div class="col-12">
-                            <label class="form-label" for="cover_image">URL ảnh chính</label>
-                            <input id="cover_image" name="cover_image" class="form-control glass-input <?= field_error($productState, 'cover_image') !== '' ? 'is-invalid-soft' : '' ?>" value="<?= h(field_value($productState, 'cover_image')) ?>">
+                            <label class="form-label" for="cover_file">Ảnh chính (1 ảnh)</label>
+                            <input id="cover_file" name="cover_file" type="file" accept="image/jpeg,image/png,image/webp,image/gif" class="form-control glass-input <?= field_error($productState, 'cover_image') !== '' ? 'is-invalid-soft' : '' ?>">
                             <?php if (field_error($productState, 'cover_image') !== ''): ?><span class="field-error"><?= h(field_error($productState, 'cover_image')) ?></span><?php endif; ?>
                         </div>
 
                         <div class="col-12">
-                            <label class="form-label" for="accent_image">URL ảnh phụ</label>
-                            <input id="accent_image" name="accent_image" class="form-control glass-input <?= field_error($productState, 'accent_image') !== '' ? 'is-invalid-soft' : '' ?>" value="<?= h(field_value($productState, 'accent_image')) ?>">
+                            <label class="form-label" for="accent_files">Ảnh phụ (có thể chọn nhiều ảnh)</label>
+                            <input id="accent_files" name="accent_files[]" type="file" multiple accept="image/jpeg,image/png,image/webp,image/gif" class="form-control glass-input <?= field_error($productState, 'accent_image') !== '' ? 'is-invalid-soft' : '' ?>">
                             <?php if (field_error($productState, 'accent_image') !== ''): ?><span class="field-error"><?= h(field_error($productState, 'accent_image')) ?></span><?php endif; ?>
                         </div>
 
                         <div class="col-md-6">
-                            <label class="form-label" for="specs_text">Thông số kỹ thuật</label>
-                            <textarea id="specs_text" name="specs_text" rows="7" class="form-control glass-textarea <?= field_error($productState, 'specs_text') !== '' ? 'is-invalid-soft' : '' ?>" placeholder="CPU: Intel Core i7&#10;GPU: RTX 4070 Super&#10;RAM: 32GB DDR5"><?= h(field_value($productState, 'specs_text')) ?></textarea>
+                            <label class="form-label">Thông số kỹ thuật</label>
+                            <div class="product-list-builder" data-spec-builder>
+                                <div class="spec-builder-list" data-spec-list></div>
+                                <button class="btn btn-outline-dark btn-soft btn-sm" type="button" data-add-spec>Thêm thông số</button>
+                            </div>
+                            <textarea id="specs_text" name="specs_text" class="d-none <?= field_error($productState, 'specs_text') !== '' ? 'is-invalid-soft' : '' ?>" data-spec-output><?= h(field_value($productState, 'specs_text')) ?></textarea>
                             <?php if (field_error($productState, 'specs_text') !== ''): ?><span class="field-error"><?= h(field_error($productState, 'specs_text')) ?></span><?php endif; ?>
                         </div>
 
                         <div class="col-md-6">
-                            <label class="form-label" for="features_text">Điểm nổi bật</label>
-                            <textarea id="features_text" name="features_text" rows="7" class="form-control glass-textarea <?= field_error($productState, 'features_text') !== '' ? 'is-invalid-soft' : '' ?>" placeholder="Tốt cho stream&#10;Airflow rộng&#10;Dễ nâng cấp"><?= h(field_value($productState, 'features_text')) ?></textarea>
+                            <label class="form-label">Điểm nổi bật</label>
+                            <div class="product-list-builder" data-feature-builder>
+                                <div class="feature-builder-list" data-feature-list></div>
+                                <button class="btn btn-outline-dark btn-soft btn-sm" type="button" data-add-feature>Thêm điểm nổi bật</button>
+                            </div>
+                            <textarea id="features_text" name="features_text" class="d-none <?= field_error($productState, 'features_text') !== '' ? 'is-invalid-soft' : '' ?>" data-feature-output><?= h(field_value($productState, 'features_text')) ?></textarea>
                             <?php if (field_error($productState, 'features_text') !== ''): ?><span class="field-error"><?= h(field_error($productState, 'features_text')) ?></span><?php endif; ?>
                         </div>
 
@@ -138,9 +146,9 @@ include __DIR__ . '/includes/header.php';
                     <div class="d-grid gap-3">
                         <?php foreach ($recentProducts as $product): ?>
                             <div class="history-item">
-                                <div class="d-flex gap-3">
+                                <div class="d-flex gap-3 align-items-start">
                                     <img src="<?= h((string) $product['cover_image']) ?>" alt="<?= h((string) $product['name']) ?>" style="width:88px;height:72px;object-fit:cover;border-radius:8px;">
-                                    <div class="min-w-0">
+                                    <div class="min-w-0 flex-grow-1">
                                         <div class="d-flex flex-wrap gap-2 mb-1">
                                             <span class="tag-pill"><?= h((string) $product['category_name']) ?></span>
                                             <span class="stock-pill <?= (int) $product['stock'] > 0 ? 'is-stock' : '' ?>"><?= (int) $product['stock'] > 0 ? 'Còn hàng' : 'Hết hàng' ?></span>
@@ -148,6 +156,11 @@ include __DIR__ . '/includes/header.php';
                                         <strong class="d-block text-truncate"><?= h((string) $product['name']) ?></strong>
                                         <div class="text-soft small"><?= money((int) $product['price']) ?> · <?= h((string) $product['slug']) ?></div>
                                     </div>
+                                    <form action="" method="post" onsubmit="return confirm('Xóa sản phẩm này?');">
+                                        <input type="hidden" name="action" value="delete_product">
+                                        <input type="hidden" name="product_id" value="<?= (int) $product['id'] ?>">
+                                        <button class="btn btn-outline-danger btn-soft btn-sm" type="submit">Xóa</button>
+                                    </form>
                                 </div>
                             </div>
                         <?php endforeach; ?>

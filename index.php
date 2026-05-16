@@ -9,6 +9,7 @@ $categories = site_categories();
 $featured = featured_products(12);
 $services = site_services();
 $heroProduct = $featured[0] ?? null;
+$heroAccentImage = $heroProduct !== null ? product_first_accent_image($heroProduct) : '';
 $visibleFeaturedCount = 4;
 
 include __DIR__ . '/includes/header.php';
@@ -61,7 +62,7 @@ include __DIR__ . '/includes/header.php';
                                 <img src="<?= h((string) $heroProduct['cover_image']) ?>" alt="<?= h((string) $heroProduct['name']) ?>">
                                 <div class="glass-controller">
                                     <div class="glass-controller-media">
-                                        <img class="glass-controller-thumb" src="<?= h((string) $heroProduct['accent_image']) ?>" alt="<?= h((string) $heroProduct['name']) ?>">
+                                        <img class="glass-controller-thumb" src="<?= h($heroAccentImage) ?>" alt="<?= h((string) $heroProduct['name']) ?>">
                                         <div class="min-w-0">
                                             <div class="glass-controller-title text-truncate"><?= h((string) $heroProduct['name']) ?></div>
                                             <div class="glass-controller-sub text-truncate"><?= h((string) $heroProduct['category_name']) ?> · <?= money((int) $heroProduct['price']) ?></div>

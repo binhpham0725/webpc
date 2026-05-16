@@ -1,4 +1,5 @@
 storage/sessions/
+storage/uploads/
 php-server.err.log
 php-server.out.log
 database/webpc.sqlite

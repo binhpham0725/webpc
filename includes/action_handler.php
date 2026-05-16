@@ -79,12 +79,24 @@ function handle_post_actions(): void
             process_payment_delete();
             redirect_to('account.php');
 
+        case 'connect_gateway':
+            process_gateway_connect();
+            redirect_to('account.php');
+
+        case 'update_order_status':
+            process_order_status_update();
+            redirect_to('account.php');
+
         case 'submit_service_request':
             process_service_request();
             redirect_to('services.php');
 
         case 'create_product':
             process_product_create();
+            redirect_to('add-product.php');
+
+        case 'delete_product':
+            process_product_delete();
             redirect_to('add-product.php');
 
         case 'subscribe_newsletter':
@@ -281,13 +293,14 @@ function process_checkout(): void
     }
 
     $totals = cart_totals($items);
+    $now = date('Y-m-d H:i:s');
     execute_query(
         'INSERT INTO orders (
             user_id, customer_name, email, phone, address, payment_method_label, note,
-            subtotal, shipping_fee, discount_amount, total_amount, status, created_at
+            subtotal, shipping_fee, discount_amount, total_amount, status, created_at, updated_at
         ) VALUES (
             :user_id, :customer_name, :email, :phone, :address, :payment_method_label, :note,
-            :subtotal, :shipping_fee, :discount_amount, :total_amount, :status, :created_at
+            :subtotal, :shipping_fee, :discount_amount, :total_amount, :status, :created_at, :updated_at
         )',
         [
             'user_id' => (int) current_user_id(),
@@ -295,18 +308,38 @@ function process_checkout(): void
             'email' => $old['email'],
             'phone' => $old['phone'],
             'address' => $old['address'],
-            'payment_method_label' => (string) $payment['bank_name'] . ' - ' . (string) $payment['account_mask'],
+            'payment_method_label' => payment_method_display($payment),
             'note' => $old['note'],
             'subtotal' => $totals['subtotal'],
             'shipping_fee' => $totals['shipping'],
             'discount_amount' => $totals['discount'],
             'total_amount' => $totals['total'],
-            'status' => 'Đang xử lý',
-            'created_at' => date('Y-m-d H:i:s'),
+            'status' => 'pending',
+            'created_at' => $now,
+            'updated_at' => $now,
         ]
     );
 
     $orderId = (int) db()->lastInsertId();
+    execute_query(
+        'INSERT INTO payments (
+            order_id, user_id, provider, payment_code, amount, status, paid_at, created_at, updated_at
+        ) VALUES (
+            :order_id, :user_id, :provider, :payment_code, :amount, :status, :paid_at, :created_at, :updated_at
+        )',
+        [
+            'order_id' => $orderId,
+            'user_id' => (int) current_user_id(),
+            'provider' => payment_type_label((string) ($payment['method_type'] ?? 'bank_transfer')),
+            'payment_code' => order_code($orderId),
+            'amount' => $totals['total'],
+            'status' => 'pending',
+            'paid_at' => null,
+            'created_at' => $now,
+            'updated_at' => $now,
+        ]
+    );
+
     foreach ($items as $item) {
         execute_query(
             'INSERT INTO order_items (order_id, product_id, quantity, unit_price, line_total)
@@ -323,7 +356,7 @@ function process_checkout(): void
 
     unset($_SESSION['webpc_coupon']);
     clear_cart();
-    set_flash('success', 'Đã tạo đơn hàng WP-' . str_pad((string) $orderId, 5, '0', STR_PAD_LEFT) . '.');
+    set_flash('success', 'Da tao don hang ' . order_code($orderId) . '. Admin se xac nhan thanh toan.');
 }
 
 function process_profile_update(): void
@@ -399,8 +432,44 @@ function process_avatar_update(): void
     $avatarUrl = trim((string) ($_POST['avatar_url'] ?? ''));
     $old = ['avatar_url' => $avatarUrl];
     $errors = [];
+    $uploadedPath = '';
+    $upload = $_FILES['avatar_file'] ?? null;
 
-    if ($avatarUrl !== '' && !valid_image_url($avatarUrl)) {
+    if (is_array($upload) && (int) ($upload['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_NO_FILE) {
+        if ((int) $upload['error'] !== UPLOAD_ERR_OK) {
+            $errors['avatar_file'] = 'Khong tai duoc file anh.';
+        } elseif ((int) ($upload['size'] ?? 0) > 3 * 1024 * 1024) {
+            $errors['avatar_file'] = 'Anh toi da 3MB.';
+        } else {
+            $tmpName = (string) ($upload['tmp_name'] ?? '');
+            $mime = is_file($tmpName) ? (string) (mime_content_type($tmpName) ?: '') : '';
+            $extensions = [
+                'image/jpeg' => 'jpg',
+                'image/png' => 'png',
+                'image/webp' => 'webp',
+                'image/gif' => 'gif',
+            ];
+
+            if (!isset($extensions[$mime])) {
+                $errors['avatar_file'] = 'Chi ho tro jpg, png, webp hoac gif.';
+            } else {
+                $uploadDir = base_path('storage/uploads/avatars');
+                if (!is_dir($uploadDir) && !mkdir($uploadDir, 0777, true) && !is_dir($uploadDir)) {
+                    $errors['avatar_file'] = 'Khong tao duoc thu muc upload.';
+                } else {
+                    $filename = 'avatar-' . (int) current_user_id() . '-' . bin2hex(random_bytes(8)) . '.' . $extensions[$mime];
+                    $target = $uploadDir . DIRECTORY_SEPARATOR . $filename;
+                    if (!move_uploaded_file($tmpName, $target)) {
+                        $errors['avatar_file'] = 'Khong luu duoc file anh.';
+                    } else {
+                        $uploadedPath = 'storage/uploads/avatars/' . $filename;
+                    }
+                }
+            }
+        }
+    }
+
+    if ($uploadedPath === '' && $avatarUrl !== '' && !valid_image_url($avatarUrl)) {
         $errors['avatar_url'] = 'Nhập URL ảnh hợp lệ.';
     }
 
@@ -413,20 +482,22 @@ function process_avatar_update(): void
     execute_query(
         'UPDATE users SET avatar_url = :avatar_url, updated_at = :updated_at WHERE id = :id',
         [
-            'avatar_url' => $avatarUrl,
+            'avatar_url' => $uploadedPath !== '' ? $uploadedPath : $avatarUrl,
             'updated_at' => date('Y-m-d H:i:s'),
             'id' => (int) current_user_id(),
         ]
     );
 
-    set_flash('success', $avatarUrl === '' ? 'Đã xóa avatar.' : 'Đã cập nhật avatar.');
+    set_flash('success', ($uploadedPath === '' && $avatarUrl === '') ? 'Da xoa avatar.' : 'Da cap nhat avatar.');
 }
 
 function process_payment_add(): void
 {
     require_login();
 
+    $typeOptions = payment_type_options();
     $old = [
+        'method_type' => trim((string) ($_POST['method_type'] ?? 'bank_transfer')),
         'bank_name' => trim((string) ($_POST['bank_name'] ?? '')),
         'account_number' => preg_replace('/\s+/', '', (string) ($_POST['account_number'] ?? '')),
         'holder_name' => trim((string) ($_POST['holder_name'] ?? '')),
@@ -434,14 +505,32 @@ function process_payment_add(): void
     ];
 
     $errors = [];
+    if (!array_key_exists($old['method_type'], $typeOptions)) {
+        $errors['method_type'] = 'Chon phuong thuc thanh toan hop le.';
+    }
+
     if ($old['bank_name'] === '') {
-        $errors['bank_name'] = 'Nhập tên ngân hàng.';
+        $old['bank_name'] = match ($old['method_type']) {
+            'cod' => 'COD',
+            'momo' => 'MoMo',
+            'vnpay' => 'VNPay',
+            'bank_card' => 'Thẻ ngân hàng nội địa',
+            'visa' => 'Visa / Mastercard',
+            default => '',
+        };
     }
-    if ($old['account_number'] === '' || strlen($old['account_number']) < 6) {
-        $errors['account_number'] = 'Nhập số tài khoản hợp lệ.';
+
+    if ($old['bank_name'] === '') {
+        $errors['bank_name'] = 'Nhap ngan hang hoac nha cung cap.';
     }
+
+    $requiresAccount = in_array($old['method_type'], ['bank_transfer', 'momo', 'zalopay'], true);
+    if ($requiresAccount && ($old['account_number'] === '' || strlen($old['account_number']) < 6)) {
+        $errors['account_number'] = 'Nhap so tai khoan hoac so vi hop le.';
+    }
+
     if ($old['holder_name'] === '') {
-        $errors['holder_name'] = 'Nhập tên chủ tài khoản.';
+        $old['holder_name'] = (string) (current_user()['full_name'] ?? '');
     }
 
     if ($errors !== []) {
@@ -450,13 +539,23 @@ function process_payment_add(): void
         return;
     }
 
+    $accountMask = match ($old['method_type']) {
+        'cod' => 'Thanh toán khi nhận hàng',
+        'vnpay' => 'Cổng thanh toán VNPay',
+        'bank_card' => 'ATM / Napas',
+        'visa' => 'Visa / Mastercard',
+        default => '**** ' . substr($old['account_number'], -4),
+    };
+
     execute_query(
-        'INSERT INTO payment_methods (user_id, bank_name, account_mask, holder_name, note, created_at)
-         VALUES (:user_id, :bank_name, :account_mask, :holder_name, :note, :created_at)',
+        'INSERT INTO payment_methods (user_id, method_type, bank_name, account_mask, account_ref, holder_name, note, created_at)
+         VALUES (:user_id, :method_type, :bank_name, :account_mask, :account_ref, :holder_name, :note, :created_at)',
         [
             'user_id' => (int) current_user_id(),
+            'method_type' => $old['method_type'],
             'bank_name' => $old['bank_name'],
-            'account_mask' => '**** ' . substr($old['account_number'], -4),
+            'account_mask' => $accountMask,
+            'account_ref' => $old['account_number'],
             'holder_name' => $old['holder_name'],
             'note' => $old['note'],
             'created_at' => date('Y-m-d H:i:s'),
@@ -482,6 +581,101 @@ function process_payment_delete(): void
     );
 
     set_flash('success', 'Đã xóa phương thức thanh toán.');
+}
+
+function process_gateway_connect(): void
+{
+    require_login();
+
+    $gateway = trim((string) ($_POST['gateway'] ?? ''));
+    $options = payment_gateway_options();
+
+    if (!isset($options[$gateway])) {
+        set_flash('danger', 'Cổng thanh toán không hợp lệ.');
+        return;
+    }
+
+    $userId = (int) current_user_id();
+    $exists = fetch_one(
+        'SELECT id FROM payment_methods WHERE user_id = :user_id AND method_type = :method_type LIMIT 1',
+        ['user_id' => $userId, 'method_type' => $gateway]
+    );
+
+    if ($exists !== null) {
+        set_flash('success', 'Cổng thanh toán đã được kết nối trước đó.');
+        return;
+    }
+
+    $gatewayConfig = $options[$gateway];
+    execute_query(
+        'INSERT INTO payment_methods (user_id, method_type, bank_name, account_mask, account_ref, holder_name, note, created_at)
+         VALUES (:user_id, :method_type, :bank_name, :account_mask, :account_ref, :holder_name, :note, :created_at)',
+        [
+            'user_id' => $userId,
+            'method_type' => $gateway,
+            'bank_name' => $gatewayConfig['provider'],
+            'account_mask' => $gatewayConfig['mask'],
+            'account_ref' => '',
+            'holder_name' => 'WEBPC',
+            'note' => $gatewayConfig['note'],
+            'created_at' => date('Y-m-d H:i:s'),
+        ]
+    );
+
+    set_flash('success', 'Đã kết nối ' . $gatewayConfig['name'] . '.');
+}
+
+function process_order_status_update(): void
+{
+    require_admin();
+
+    $orderId = (int) ($_POST['order_id'] ?? 0);
+    $orderStatus = trim((string) ($_POST['order_status'] ?? ''));
+    $paymentStatus = trim((string) ($_POST['payment_status'] ?? ''));
+    $orderOptions = order_status_options();
+    $paymentOptions = payment_status_options();
+
+    if ($orderId <= 0) {
+        set_flash('danger', 'Khong tim thay don hang can cap nhat.');
+        return;
+    }
+
+    if (!array_key_exists($orderStatus, $orderOptions) || !array_key_exists($paymentStatus, $paymentOptions)) {
+        set_flash('danger', 'Trang thai don hang hoac thanh toan khong hop le.');
+        return;
+    }
+
+    $order = fetch_one('SELECT id FROM orders WHERE id = :id LIMIT 1', ['id' => $orderId]);
+    if ($order === null) {
+        set_flash('danger', 'Don hang khong ton tai.');
+        return;
+    }
+
+    $now = date('Y-m-d H:i:s');
+    execute_query(
+        'UPDATE orders SET status = :status, updated_at = :updated_at WHERE id = :id',
+        [
+            'id' => $orderId,
+            'status' => $orderStatus,
+            'updated_at' => $now,
+        ]
+    );
+
+    execute_query(
+        'UPDATE payments
+         SET status = :payment_status,
+             paid_at = CASE WHEN :payment_status = \'paid\' AND paid_at IS NULL THEN :paid_at ELSE paid_at END,
+             updated_at = :updated_at
+         WHERE order_id = :order_id',
+        [
+            'order_id' => $orderId,
+            'payment_status' => $paymentStatus,
+            'paid_at' => $now,
+            'updated_at' => $now,
+        ]
+    );
+
+    set_flash('success', 'Da cap nhat trang thai ' . order_code($orderId) . '.');
 }
 
 function process_service_request(): void
@@ -554,13 +748,21 @@ function process_product_create(): void
         'rating' => trim((string) ($_POST['rating'] ?? '4.5')),
         'featured' => isset($_POST['featured']) ? '1' : '0',
         'tags' => trim((string) ($_POST['tags'] ?? '')),
-        'cover_image' => trim((string) ($_POST['cover_image'] ?? '')),
-        'accent_image' => trim((string) ($_POST['accent_image'] ?? '')),
+        'cover_image' => '',
+        'accent_image' => '',
         'specs_text' => trim((string) ($_POST['specs_text'] ?? '')),
         'features_text' => trim((string) ($_POST['features_text'] ?? '')),
     ];
 
     $errors = [];
+    $coverUpload = store_uploaded_image('cover_file', 'products', 'product-cover', $errors, 'cover_image');
+    $accentUploads = store_uploaded_images('accent_files', 'products', 'product-accent', $errors, 'accent_image');
+    if ($coverUpload !== '') {
+        $old['cover_image'] = $coverUpload;
+    }
+    if ($accentUploads !== []) {
+        $old['accent_image'] = json_encode($accentUploads, JSON_UNESCAPED_UNICODE);
+    }
 
     if ($old['category_id'] === '' || fetch_one('SELECT id FROM categories WHERE id = :id LIMIT 1', ['id' => (int) $old['category_id']]) === null) {
         $errors['category_id'] = 'Chọn danh mục hợp lệ.';
@@ -583,11 +785,11 @@ function process_product_create(): void
     if ($old['stock'] === '' || (int) $old['stock'] < 0) {
         $errors['stock'] = 'Nhập tồn kho hợp lệ.';
     }
-    if (!valid_image_url($old['cover_image'])) {
-        $errors['cover_image'] = 'Nhập URL ảnh chính hợp lệ.';
+    if ($old['cover_image'] === '' || !valid_image_url($old['cover_image'])) {
+        $errors['cover_image'] = 'Chọn 1 ảnh chính cho sản phẩm.';
     }
-    if (!valid_image_url($old['accent_image'])) {
-        $errors['accent_image'] = 'Nhập URL ảnh phụ hợp lệ.';
+    if ($old['accent_image'] === '') {
+        $errors['accent_image'] = 'Chọn ít nhất 1 ảnh phụ cho sản phẩm.';
     }
 
     $slug = $old['slug'] !== '' ? slugify($old['slug']) : slugify($old['name']);
@@ -644,6 +846,109 @@ function process_product_create(): void
     set_flash('success', 'Đã tạo sản phẩm mới.');
 }
 
+function process_product_delete(): void
+{
+    require_admin();
+
+    $productId = (int) ($_POST['product_id'] ?? 0);
+    if ($productId <= 0) {
+        set_flash('danger', 'Không tìm thấy sản phẩm cần xóa.');
+        return;
+    }
+
+    $product = product_by_id($productId);
+    if ($product === null) {
+        set_flash('danger', 'Sản phẩm không tồn tại.');
+        return;
+    }
+
+    execute_query('DELETE FROM products WHERE id = :id', ['id' => $productId]);
+    remove_cart_item($productId);
+
+    set_flash('success', 'Đã xóa sản phẩm "' . (string) $product['name'] . '".');
+}
+
+function store_uploaded_image(string $field, string $folder, string $prefix, array &$errors, string $errorKey): string
+{
+    $upload = $_FILES[$field] ?? null;
+    if (!is_array($upload) || (int) ($upload['error'] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_NO_FILE) {
+        return '';
+    }
+
+    if ((int) $upload['error'] !== UPLOAD_ERR_OK) {
+        $errors[$errorKey] = 'Không tải được file ảnh.';
+        return '';
+    }
+
+    if ((int) ($upload['size'] ?? 0) > 5 * 1024 * 1024) {
+        $errors[$errorKey] = 'Ảnh tối đa 5MB.';
+        return '';
+    }
+
+    $tmpName = (string) ($upload['tmp_name'] ?? '');
+    $mime = is_file($tmpName) ? (string) (mime_content_type($tmpName) ?: '') : '';
+    $extensions = [
+        'image/jpeg' => 'jpg',
+        'image/png' => 'png',
+        'image/webp' => 'webp',
+        'image/gif' => 'gif',
+    ];
+
+    if (!isset($extensions[$mime])) {
+        $errors[$errorKey] = 'Chỉ hỗ trợ ảnh jpg, png, webp hoặc gif.';
+        return '';
+    }
+
+    $safeFolder = trim($folder, '/\\');
+    $uploadDir = base_path('storage/uploads/' . $safeFolder);
+    if (!is_dir($uploadDir) && !mkdir($uploadDir, 0777, true) && !is_dir($uploadDir)) {
+        $errors[$errorKey] = 'Không tạo được thư mục upload.';
+        return '';
+    }
+
+    $filename = $prefix . '-' . (int) current_user_id() . '-' . bin2hex(random_bytes(8)) . '.' . $extensions[$mime];
+    $target = $uploadDir . DIRECTORY_SEPARATOR . $filename;
+    if (!move_uploaded_file($tmpName, $target)) {
+        $errors[$errorKey] = 'Không lưu được file ảnh.';
+        return '';
+    }
+
+    return 'storage/uploads/' . $safeFolder . '/' . $filename;
+}
+
+function store_uploaded_images(string $field, string $folder, string $prefix, array &$errors, string $errorKey): array
+{
+    $uploads = $_FILES[$field] ?? null;
+    if (!is_array($uploads) || !isset($uploads['name']) || !is_array($uploads['name'])) {
+        $single = store_uploaded_image($field, $folder, $prefix, $errors, $errorKey);
+        return $single !== '' ? [$single] : [];
+    }
+
+    $paths = [];
+    $count = count($uploads['name']);
+    for ($index = 0; $index < $count; $index++) {
+        if ((int) ($uploads['error'][$index] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_NO_FILE) {
+            continue;
+        }
+
+        $_FILES[$field . '_' . $index] = [
+            'name' => $uploads['name'][$index] ?? '',
+            'type' => $uploads['type'][$index] ?? '',
+            'tmp_name' => $uploads['tmp_name'][$index] ?? '',
+            'error' => $uploads['error'][$index] ?? UPLOAD_ERR_NO_FILE,
+            'size' => $uploads['size'][$index] ?? 0,
+        ];
+
+        $path = store_uploaded_image($field . '_' . $index, $folder, $prefix, $errors, $errorKey);
+        unset($_FILES[$field . '_' . $index]);
+        if ($path !== '') {
+            $paths[] = $path;
+        }
+    }
+
+    return $paths;
+}
+
 function process_newsletter_subscription(): void
 {
     $email = trim((string) ($_POST['email'] ?? ''));
@@ -653,7 +958,7 @@ function process_newsletter_subscription(): void
     }
 
     execute_query(
-        'INSERT OR IGNORE INTO newsletter_subscribers (email, created_at)
+        'INSERT IGNORE INTO newsletter_subscribers (email, created_at)
          VALUES (:email, :created_at)',
         [
             'email' => $email,

@@ -1,48 +1,67 @@
 # webpc
 
-Storefront bán thiết bị máy tính viết bằng:
+Website bán PC, thiết bị và dịch vụ chạy trên PHP 8, Bootstrap 5 và MySQL trong XAMPP.
 
-- PHP 8
-- Bootstrap 5
-- CSS custom cho hiệu ứng liquid glass
-- JavaScript nhỏ để tăng trải nghiệm form và quantity
-- SQLite qua PDO để chạy tự động trong XAMPP
+## Cấu trúc thư mục
 
-## Chạy nhanh
+- `index.php`, `products.php`, `product.php`, `cart.php`, `account.php`, `services.php`, `login.php`: các trang public.
+- `add-product.php`: trang quản trị thêm, sửa và xoá sản phẩm.
+- `includes/`: bootstrap, helper, xử lý form, header và footer dùng chung.
+- `assets/css/`, `assets/js/`: giao diện và JavaScript.
+- `database/schema.mysql.sql`: schema và dữ liệu mẫu cho MySQL/MariaDB.
+- `database/migrate_sqlite_to_mysql.php`: script chuyển dữ liệu SQLite cũ sang MySQL.
+- `database/legacy/schema.sqlite.sql`: schema SQLite cũ, chỉ giữ để tham khảo.
+- `legacy/html-redirects/`: các file HTML redirect cũ đã tách khỏi thư mục chạy chính.
+- `storage/sessions/`, `storage/uploads/`: dữ liệu runtime local, không commit lên Git.
 
-Từ thư mục `webpc`:
+## Chạy nhanh trên XAMPP
+
+1. Bật Apache và MySQL trong XAMPP.
+2. Mở `http://localhost/xampp/webpc/index.php`.
+3. Nếu muốn chạy bằng PHP built-in server:
 
 ```powershell
-php -S 127.0.0.1:8027 -t .
+php -S 127.0.0.1:8087 -t .
 ```
 
-Mở:
-
-- `http://127.0.0.1:8027/index.php`
+Sau đó mở `http://127.0.0.1:8087/index.php`.
 
 ## Database
 
-- File schema: `database/schema.sql`
-- File SQLite tự sinh khi chạy: `database/webpc.sqlite`
+Ứng dụng tự tạo database `webpc` trong MySQL khi chạy lần đầu nếu database chưa tồn tại.
 
-Database sẽ tự khởi tạo ở lần chạy đầu tiên, không cần import thủ công.
+Thông tin mặc định:
 
-## Trang chính
+- Host: `127.0.0.1`
+- Port: `3306`
+- Database: `webpc`
+- User: `root`
+- Password: rỗng
 
-- `index.php`: trang chủ
-- `products.php`: danh mục, tìm kiếm, lọc
-- `product.php`: chi tiết sản phẩm
-- `cart.php`: giỏ hàng và checkout
-- `account.php`: hồ sơ khách hàng, phương thức thanh toán, lịch sử đơn
-- `services.php`: dịch vụ và form gửi yêu cầu
+Có thể đổi cấu hình bằng biến môi trường:
 
-## Luồng đã có
+- `WEBPC_DB_HOST`
+- `WEBPC_DB_PORT`
+- `WEBPC_DB_NAME`
+- `WEBPC_DB_USER`
+- `WEBPC_DB_PASS`
 
-- Thêm sản phẩm vào giỏ hàng qua PHP session
-- Cập nhật / xóa giỏ hàng
-- Áp mã demo `NVIDIA`
-- Checkout lưu vào database
-- Cập nhật hồ sơ khách hàng
-- Thêm / xóa phương thức thanh toán
-- Gửi yêu cầu dịch vụ
-- Lưu email newsletter
+Chuyển dữ liệu từ SQLite cũ sang MySQL:
+
+```powershell
+php database/migrate_sqlite_to_mysql.php
+```
+
+## Tài khoản quản trị
+
+- Email: `admin@webpc.local`
+- Mật khẩu: `Admin@12345`
+
+## Chức năng chính
+
+- Đăng nhập, đăng ký, hồ sơ và avatar upload từ máy local.
+- Giỏ hàng, checkout và lưu đơn hàng vào MySQL.
+- Phương thức thanh toán phổ biến tại Việt Nam: MoMo, VNPay, ZaloPay, thẻ ngân hàng, Visa/Mastercard, chuyển khoản và COD.
+- Quản trị thêm, sửa, xoá sản phẩm.
+- Ảnh chính một file và ảnh phụ nhiều file cho sản phẩm.
+- Thông số kỹ thuật và điểm nổi bật nhập bằng giao diện nhiều dòng dễ thao tác.

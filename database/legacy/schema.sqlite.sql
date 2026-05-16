@@ -62,8 +62,10 @@ CREATE TABLE IF NOT EXISTS services (
 CREATE TABLE IF NOT EXISTS payment_methods (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER NOT NULL,
+    method_type TEXT NOT NULL DEFAULT 'bank_transfer',
     bank_name TEXT NOT NULL,
     account_mask TEXT NOT NULL,
+    account_ref TEXT NOT NULL DEFAULT '',
     holder_name TEXT NOT NULL,
     note TEXT NOT NULL DEFAULT '',
     created_at TEXT NOT NULL,
@@ -85,6 +87,7 @@ CREATE TABLE IF NOT EXISTS orders (
     total_amount INTEGER NOT NULL,
     status TEXT NOT NULL,
     created_at TEXT NOT NULL,
+    updated_at TEXT DEFAULT NULL,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
 );
 
@@ -112,6 +115,21 @@ CREATE TABLE IF NOT EXISTS service_requests (
     created_at TEXT NOT NULL,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL,
     FOREIGN KEY (service_id) REFERENCES services(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS payments (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    order_id INTEGER NOT NULL,
+    user_id INTEGER DEFAULT NULL,
+    provider TEXT NOT NULL,
+    payment_code TEXT NOT NULL UNIQUE,
+    amount INTEGER NOT NULL,
+    status TEXT NOT NULL,
+    paid_at TEXT DEFAULT NULL,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
 );
 
 CREATE TABLE IF NOT EXISTS newsletter_subscribers (
@@ -151,5 +169,10 @@ INSERT INTO services (id, slug, title, eta_label, price_label, description, cove
     (3, 'clean-and-repaste', 'Ve sinh va thay nhiet', '90 phut', 'Tu 180.000 VND', 'Lam sach bui, thay keo tan, va test lai nhiet do.', 'https://images.unsplash.com/photo-1580894908361-967195033215?auto=format&fit=crop&w=1200&q=80', 3),
     (4, 'workspace-setup', 'Trien khai goc lam viec', 'Theo lich hen', 'Tu 500.000 VND', 'Tu van monitor, dock, webcam, router, va bo tri day gon.', 'https://images.unsplash.com/photo-1496171367470-9ed9a91ea931?auto=format&fit=crop&w=1200&q=80', 4);
 
-INSERT INTO payment_methods (id, user_id, bank_name, account_mask, holder_name, note, created_at) VALUES
-    (1, 1, 'Ngan hang ABC', '**** 9845', 'ADMIN WEBPC', 'Tai khoan demo cho admin.', '2026-04-29 00:00:00');
+INSERT INTO payment_methods (id, user_id, method_type, bank_name, account_mask, account_ref, holder_name, note, created_at) VALUES
+    (1, 1, 'bank_transfer', 'Ngan hang ABC', '**** 9845', '9845', 'ADMIN WEBPC', 'Tai khoan demo cho admin.', '2026-04-29 00:00:00'),
+    (2, 1, 'cod', 'COD', 'Thanh toan khi nhan hang', '', 'ADMIN WEBPC', 'Nhan hang roi thanh toan tien mat hoac chuyen khoan.', '2026-04-29 00:00:00'),
+    (3, 1, 'momo', 'MoMo', '**** 0000', '0900000000', 'ADMIN WEBPC', 'Thanh toan qua vi MoMo.', '2026-04-29 00:00:00'),
+    (4, 1, 'vnpay', 'VNPay', 'Cong thanh toan VNPay', '', 'ADMIN WEBPC', 'Thanh toan qua QR VNPay hoac ATM noi dia.', '2026-04-29 00:00:00'),
+    (5, 1, 'bank_card', 'The ngan hang noi dia', 'ATM / Napas', '', 'ADMIN WEBPC', 'Thanh toan bang the ngan hang noi dia.', '2026-04-29 00:00:00'),
+    (6, 1, 'visa', 'Visa / Mastercard / JCB', 'The quoc te', '', 'ADMIN WEBPC', 'Thanh toan bang Visa, Mastercard hoac JCB.', '2026-04-29 00:00:00');

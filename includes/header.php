@@ -36,83 +36,69 @@ $searchValue = trim((string) ($_GET['q'] ?? ''));
     <link rel="stylesheet" href="assets/css/app.css">
 </head>
 <body>
-<div class="top-strip py-2">
-    <div class="container-xxl d-flex flex-wrap justify-content-between gap-2 small">
-        <span>Giao diện liquid glass | PHP + Bootstrap + SQLite</span>
-        <span>Chế độ tối, đăng nhập/đăng ký, giỏ hàng, dịch vụ, quản trị sản phẩm</span>
-    </div>
-</div>
-
 <header class="app-header sticky-top">
     <div class="container-xxl">
-        <div class="header-shell glass-panel px-3 px-lg-4 py-3 mt-3">
-            <div class="row g-3 align-items-center">
-                <div class="col-xl-2 col-lg-3">
-                    <a class="brand-mark d-inline-flex align-items-center gap-3" href="index.php">
-                        <span class="brand-box">wp</span>
-                        <span>
-                            <span class="d-block fw-bold text-main">webpc</span>
-                            <span class="small text-soft">PC, thiết bị, dịch vụ, góc máy</span>
-                        </span>
-                    </a>
-                </div>
+        <div class="header-shell glass-panel">
+            <div class="header-layout">
+                <a class="brand-mark" href="index.php">
+                    <span class="brand-box">wp</span>
+                    <span class="brand-copy">
+                        <span class="brand-name">webpc</span>
+                        <span class="brand-subtitle">PC, thiết bị, dịch vụ</span>
+                    </span>
+                </a>
 
-                <div class="col-xl-6 col-lg-5">
-                    <form action="products.php" method="get" class="search-shell d-flex align-items-center gap-2">
-                        <i class="bi bi-search text-soft ms-2"></i>
-                        <input
-                            type="search"
-                            class="form-control form-control-lg glass-input border-0"
-                            name="q"
-                            value="<?= h($searchValue) ?>"
-                            placeholder="Tìm cấu hình, màn hình, GPU, thiết bị..."
-                        >
-                        <button class="btn btn-brand btn-lg px-4" type="submit">Tìm</button>
-                    </form>
-                </div>
+                <form action="products.php" method="get" class="search-shell">
+                    <i class="bi bi-search text-soft"></i>
+                    <input
+                        type="search"
+                        class="form-control form-control-lg glass-input border-0"
+                        name="q"
+                        value="<?= h($searchValue) ?>"
+                        placeholder="Tìm cấu hình, màn hình, GPU, thiết bị..."
+                    >
+                    <button class="btn btn-brand btn-lg px-4" type="submit">Tìm</button>
+                </form>
 
-                <div class="col-xl-4 col-lg-4">
-                    <div class="header-actions-cluster">
-                        <button class="quick-pill quick-pill-icon" type="button" data-theme-toggle aria-label="Đổi giao diện">
-                            <i class="bi bi-moon-stars-fill" data-theme-icon></i>
-                            <span class="fw-semibold text-main d-none d-sm-inline">Giao diện</span>
-                        </button>
+                <div class="header-actions-cluster">
+                    <button class="quick-pill quick-pill-icon" type="button" data-theme-toggle aria-label="Đổi giao diện">
+                        <i class="bi bi-moon-stars-fill" data-theme-icon></i>
+                        <span class="fw-semibold text-main d-none d-xl-inline">Giao diện</span>
+                    </button>
 
-                        <?php if (is_admin()): ?>
-                            <a class="quick-pill quick-pill-strong" href="add-product.php">
-                                <i class="bi bi-plus-square-fill fs-5"></i>
-                                <span class="fw-semibold text-main">Quản trị</span>
-                            </a>
-                        <?php endif; ?>
-
-                        <a class="quick-pill" href="cart.php">
-                            <i class="bi bi-bag-check fs-5"></i>
-                            <span class="fw-semibold text-main">Giỏ hàng</span>
-                            <span class="badge rounded-pill glass-badge"><?= (int) $cartCount ?></span>
+                    <?php if (is_admin()): ?>
+                        <a class="quick-pill quick-pill-strong" href="add-product.php">
+                            <i class="bi bi-plus-square-fill fs-5"></i>
+                            <span class="fw-semibold text-main">Quản trị</span>
                         </a>
+                    <?php endif; ?>
 
-                        <?php if ($user !== null): ?>
-                            <a class="quick-pill" href="account.php">
-                                <?php if (trim((string) $user['avatar_url']) !== ''): ?>
-                                    <img class="avatar-pill is-image" src="<?= h((string) $user['avatar_url']) ?>" alt="<?= h((string) $user['full_name']) ?>">
-                                <?php else: ?>
-                                    <span class="avatar-pill"><?= h((string) $user['avatar_label']) ?></span>
-                                <?php endif; ?>
-                                <span class="fw-semibold text-main"><?= h((string) $user['full_name']) ?></span>
-                            </a>
-                        <?php else: ?>
-                            <a class="quick-pill" href="login.php">
-                                <i class="bi bi-person-circle fs-5"></i>
-                                <span class="fw-semibold text-main">Đăng nhập</span>
-                            </a>
-                        <?php endif; ?>
-                    </div>
+                    <a class="quick-pill" href="cart.php">
+                        <i class="bi bi-bag-check fs-5"></i>
+                        <span class="fw-semibold text-main">Giỏ hàng</span>
+                        <span class="badge rounded-pill glass-badge"><?= (int) $cartCount ?></span>
+                    </a>
+
+                    <?php if ($user !== null): ?>
+                        <a class="quick-pill account-pill" href="account.php">
+                            <?php if (trim((string) $user['avatar_url']) !== ''): ?>
+                                <img class="avatar-pill is-image" src="<?= h((string) $user['avatar_url']) ?>" alt="<?= h((string) $user['full_name']) ?>">
+                            <?php else: ?>
+                                <span class="avatar-pill"><?= h((string) $user['avatar_label']) ?></span>
+                            <?php endif; ?>
+                            <span class="fw-semibold text-main account-name"><?= h((string) $user['full_name']) ?></span>
+                        </a>
+                    <?php else: ?>
+                        <a class="quick-pill" href="login.php">
+                            <i class="bi bi-person-circle fs-5"></i>
+                            <span class="fw-semibold text-main">Đăng nhập</span>
+                        </a>
+                    <?php endif; ?>
                 </div>
             </div>
         </div>
     </div>
 </header>
-
 <main class="pb-5">
     <div class="container-xxl pt-3">
         <?php foreach ($flashes as $flash): ?>
